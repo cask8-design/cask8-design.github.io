@@ -286,8 +286,16 @@ function abrirLivro(){
 }
 async function renderPagina(n){
   if(!pdf)return;n=Math.max(1,Math.min(n,pdf.numPages));paginaAtual=n;const token=++renderToken;
-  const page=await pdf.getPage(n);if(token!==renderToken)return;const base=page.getViewport({scale:1});const scale=Math.min((window.innerWidth-12)/base.width,1100/base.width);const vp=page.getViewport({scale:Math.max(scale,1)});
-  const c=document.getElementById("pageCanvas"),ctx=c.getContext("2d",{alpha:false});c.width=Math.floor(vp.width);c.height=Math.floor(vp.height);
+  const page=await pdf.getPage(n);if(token!==renderToken)return;
+  const base=page.getViewport({scale:1});
+  const cssScale=Math.min((window.innerWidth-12)/base.width,1100/base.width);
+  const dpr=Math.min(window.devicePixelRatio||1,3);
+  const renderScale=Math.max(cssScale,1)*dpr;
+  const cssVp=page.getViewport({scale:Math.max(cssScale,1)});
+  const vp=page.getViewport({scale:renderScale});
+  const c=document.getElementById("pageCanvas"),ctx=c.getContext("2d",{alpha:false});
+  c.width=Math.floor(vp.width);c.height=Math.floor(vp.height);
+  c.style.width=Math.floor(cssVp.width)+"px";c.style.height="auto";
   await page.render({canvasContext:ctx,viewport:vp,background:"#fff"}).promise;if(token!==renderToken)return;
   cortarBordas(c);document.getElementById("loading").style.display="none";c.style.display="block";atualizarUI();salvarPosicao();window.scrollTo({top:0,behavior:"instant"});
 }
