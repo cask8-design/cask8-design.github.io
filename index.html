@@ -259,7 +259,8 @@ async function carregarBiblioteca(){
     const desc=esc(b.descricao||"Livro disponível para leitura.");
     const capa=(b.capa&&/^https?:\/\//i.test(String(b.capa)))?esc(b.capa):(Number(b.id)===1?"Screenshot_20260909-190353~3.jpg":"");
     const img=capa?`<img src="${capa}" alt="Capa de ${titulo}">`:`<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#777;font-weight:700;padding:20px">${titulo}</div>`;
-    return `<div class="card"><div class="cover">${img}</div><h2>${titulo}</h2><p>${desc}</p>${b.pdf_url?`<button class="primary" onclick="abrirLivro(${b.id})">▶ Ler livro</button>`:`<button disabled>PDF não disponível</button>`}</div>`;
+    const temPdf=!!b.pdf_url || Number(b.id)===1;
+    return `<div class="card"><div class="cover">${img}</div><h2>${titulo}</h2><p>${desc}</p>${temPdf?`<button class="primary" onclick="abrirLivro(${b.id})">▶ Ler livro</button>`:`<button disabled>PDF não disponível</button>`}</div>`;
   }).join('')+'</div>';
 }
 
