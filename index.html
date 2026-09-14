@@ -96,7 +96,7 @@ function setStatus(t){document.getElementById("adminStatus").textContent=t||"";d
 function setError(t){document.getElementById("adminError").textContent=t||"";document.getElementById("adminStatus").textContent=""}
 function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 
-async async function abrirAdmin(){
+async function abrirAdmin(){
   if(currentUser){document.getElementById("adminArea").classList.remove("hidden");document.getElementById("adminEmail").textContent=currentUser.email||"";mostrarLivros();return}
   const email=prompt("E-mail do administrador:");
   if(!email)return;
