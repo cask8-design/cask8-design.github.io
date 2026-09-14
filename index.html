@@ -34,30 +34,16 @@ main{max-width:1100px;margin:auto;padding:14px}
 .fuzzar-footer{text-align:center;color:#777;font-size:12px;padding:28px 12px 22px;margin-top:10px;letter-spacing:.3px}.hidden{display:none!important}
 @media(min-width:700px){main{padding:20px}#pageCanvas{max-height:calc(100vh - 140px);width:auto;max-width:92vw}}
 </style>
-
-<style id="fundo-ca-sk8">
-html,body{
-  background:#050505 url('fundo-ca-sk8.png') center top / cover fixed no-repeat !important;
-}
-body{
-  background-attachment:fixed !important;
-}
-@media (max-width:700px){
-  html,body{
-    background-position:center top;
-    background-size:auto 100vh;
-  }
-}
-</style>
-
+<style id="fundo-ca-sk8">html,body{background:#050505 url('fundo-ca-sk8.png') center top / cover fixed no-repeat !important}body{background-attachment:fixed !important}@media(max-width:700px){html,body{background-position:center top;background-size:auto 100vh}}</style>
 </head>
 <body>
-<header class="header"><h1>📚 Minha Biblioteca</h1><p>O Rei Sem Rosto</p></header>
+<header class="header"><img src="logo-ca-sk8.png" alt="Ca SK8 - Livros de Anime" style="display:block;width:min(92vw,700px);max-height:115px;object-fit:contain;margin:8px auto 4px"><p>Minha Biblioteca</p></header>
 
 <main>
 <section id="biblioteca">
   <div id="booksGrid"></div>
 </section>
+<div style="text-align:center;margin:14px 0 4px"><button onclick="abrirAdmin()" style="padding:10px 18px;border-radius:10px">⚙️ Administrador</button></div>
 <footer class="fuzzar-footer">Primeiro Modelo do Fuzzar</footer>
 
 <section id="leitor">
@@ -323,8 +309,14 @@ function salvarPosicao(){salvarEstado("leitor")}
 async function abrirLivro(id=1){
   const {data,error}=await sb.from("Livros").select("*").eq("id",id).maybeSingle();
   if(error||!data){alert("Não foi possível encontrar este livro.");return}
-  if(!data.pdf_url){alert("Este livro ainda não possui um PDF enviado.");return}
-  livroAtual=data;PDF_URL=data.pdf_url;STORAGE_KEY="orei_sem_rosto_estado_v5_"+data.id;
+  // O primeiro livro já existia antes do sistema de upload e usa o PDF do GitHub.
+  if(Number(data.id)===1 && !data.pdf_url){
+    PDF_URL="O-Rei-Sem-Rosto.pdf";
+  }else{
+    if(!data.pdf_url){alert("Este livro ainda não possui um PDF enviado.");return}
+    PDF_URL=data.pdf_url;
+  }
+  livroAtual=data;STORAGE_KEY="orei_sem_rosto_estado_v5_"+data.id;
   pdf=null;carregado=false;renderToken++;
   const estado=lerEstado();paginaAtual=Number(estado.pagina)||1;salvarEstado("leitor");
   document.getElementById("biblioteca").style.display="none";document.getElementById("leitor").style.display="block";document.getElementById("controls").style.display="flex";document.querySelector(".reader-title").textContent=data.title||"Livro";window.scrollTo(0,0);
@@ -356,7 +348,7 @@ function atualizarUI(){const total=pdf?pdf.numPages:63;document.getElementById("
 function proximaPagina(){if(pdf&&paginaAtual<pdf.numPages)renderPagina(paginaAtual+1)}function paginaAnterior(){if(pdf&&paginaAtual>1)renderPagina(paginaAtual-1)}
 function voltarBiblioteca(){salvarEstado("biblioteca");renderToken++;document.getElementById("leitor").style.display="none";document.getElementById("biblioteca").style.display="block";document.getElementById("controls").style.display="none";document.getElementById("progress").style.width="0";carregarBiblioteca()}
 function toggleModo(){document.body.classList.toggle("modo")}
-window.addEventListener("load",async()=>{await carregarBiblioteca();const {data}=await sb.auth.getUser();if(data?.user){currentUser=data.user;document.getElementById("adminArea").classList.remove("hidden");document.getElementById("adminEmail").textContent=currentUser.email||"";mostrarLivros()}
+window.addEventListener("load",async()=>{await carregarBiblioteca();const {data}=await sb.auth.getUser();if(data?.user){currentUser=data.user;document.getElementById("adminEmail").textContent=currentUser.email||""}}
   // Ao atualizar/recarregar a página, permanecer na biblioteca. A posição do leitor continua salva para quando o livro for aberto manualmente.
   document.getElementById("biblioteca").style.display="block";document.getElementById("leitor").style.display="none";document.getElementById("controls").style.display="none";
 });
