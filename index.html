@@ -35,15 +35,52 @@ main{max-width:1100px;margin:auto;padding:14px}
 @media(min-width:700px){main{padding:20px}#pageCanvas{max-height:calc(100vh - 140px);width:auto;max-width:92vw}}
 </style>
 <style id="fundo-ca-sk8">html,body{background:#050505 url('fundo-ca-sk8.png') center top / cover fixed no-repeat !important}body{background-attachment:fixed !important}@media(max-width:700px){html,body{background-position:center top;background-size:auto 100vh}}</style>
+
+<style id="admin-logo-style">
+.admin-logo-btn{
+  position:fixed;
+  top:12px;
+  right:12px;
+  z-index:99999;
+  width:64px;
+  height:64px;
+  padding:3px;
+  border:1px solid rgba(255,255,255,.2);
+  border-radius:14px;
+  background:rgba(0,0,0,.85);
+  box-shadow:0 4px 16px rgba(0,0,0,.5);
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.admin-logo-btn img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  border-radius:11px;
+  display:block;
+}
+.admin-logo-btn:active{transform:scale(.94)}
+@media(max-width:700px){
+  .admin-logo-btn{top:10px;right:10px;width:58px;height:58px}
+}
+</style>
+
 </head>
 <body>
+
+<button class="admin-logo-btn" onclick="abrirAdmin()" aria-label="Administrador" title="Administrador">
+  <img src="admin-logo-ca-sk8.png" alt="Administrador">
+</button>
+
 <header class="header"><img src="logo-ca-sk8.png" alt="Ca SK8 - Livros de Anime" style="display:block;width:min(92vw,700px);max-height:115px;object-fit:contain;margin:8px auto 4px"><p>Minha Biblioteca</p></header>
 
 <main>
 <section id="biblioteca">
   <div id="booksGrid"></div>
 </section>
-<div style="text-align:center;margin:14px 0 4px"><button onclick="abrirAdmin()" style="padding:10px 18px;border-radius:10px">⚙️ Administrador</button></div>
+<div style="text-align:center;margin:14px 0 4px"></div>
 <footer class="fuzzar-footer">Primeiro Modelo do Fuzzar</footer>
 
 <section id="leitor">
