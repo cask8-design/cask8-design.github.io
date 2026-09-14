@@ -15,7 +15,7 @@ button:disabled{opacity:.45}
 .header h1{margin:0;font-size:20px}.header p{margin:4px 0 0;color:#888;font-size:11px}
 main{max-width:1100px;margin:auto;padding:14px}
 .card,.admin{background:#121217;border:1px solid #292931;border-radius:18px;box-shadow:0 12px 35px #0008}
-.card{max-width:330px;margin:18px auto;padding:12px;text-align:center}
+.card{max-width:330px;margin:18px auto;padding:12px;text-align:center}.books-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,330px));gap:18px;justify-content:center}.book-empty{text-align:center;color:#999;padding:35px 15px}
 .cover{width:100%;aspect-ratio:2/3;overflow:hidden;border-radius:12px;background:#1d1d23}
 .cover img{width:100%;height:100%;object-fit:cover}.card h2{font-size:20px;margin:13px 0 5px}.card p{color:#999;margin:0 0 13px;font-size:13px}
 .primary{background:#fff;color:#111}
@@ -40,13 +40,7 @@ main{max-width:1100px;margin:auto;padding:14px}
 
 <main>
 <section id="biblioteca">
-  <div id="bookCard" class="card">
-    <div class="cover"><img src="Screenshot_20260909-190353~3.jpg" alt="Capa de O Rei Sem Rosto"></div>
-    <h2>O Rei Sem Rosto</h2><p>Livro completo — 63 páginas.</p>
-    <button class="primary" onclick="abrirLivro()">▶ Ler livro</button>
-  <button onclick="abrirAdmin()" style="margin-top:8px;background:#24242b;color:#fff">⚙️ Administrador</button>
-  <button onclick="mostrarRecuperacao()" style="margin-top:8px;background:#24242b;color:#fff">🔑 Esqueci minha senha</button>
-  </div>
+  <div id="booksGrid"></div>
 </section>
 <footer class="fuzzar-footer">Primeiro Modelo do Fuzzar</footer>
 
@@ -91,8 +85,8 @@ const SUPABASE_URL="https://fftvitfjhsatblgxvalv.supabase.co";
 const SUPABASE_KEY="sb_publishable_BJVioT8Oluxs2G97HcijnQ_P_s0PdOI";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
-const PDF_URL="O-Rei-Sem-Rosto.pdf", STORAGE_KEY="orei_sem_rosto_estado_v5", VIEW_KEY="orei_sem_rosto_view_v5";
-let pdf=null,paginaAtual=1,carregado=false,renderToken=0,currentUser=null,books=[];
+let PDF_URL="O-Rei-Sem-Rosto.pdf"; let STORAGE_KEY="orei_sem_rosto_estado_v5_1"; const VIEW_KEY="orei_sem_rosto_view_v5";
+let pdf=null,paginaAtual=1,carregado=false,renderToken=0,currentUser=null,books=[],livroAtual=null;
 
 pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
@@ -161,7 +155,7 @@ async function mostrarLivros(){
   const {data,error}=await sb.from("Livros").select("*").order("id",{ascending:true});
   if(error){setError("Erro ao carregar livros: "+error.message);return}
   books=data||[];setStatus("Livros carregados.");
-  let html='<div class="form"><input id="novoLivro" placeholder="Título do novo livro"><button style="width:100%" onclick="adicionarLivro()">+ Adicionar livro</button></div><h4>📚 Gerenciar livros</h4>';
+  let html='<div class="form"><h4 style="margin:0 0 10px">⬆️ Upload de livro</h4><input id="arquivoLivro" type="file" accept="application/pdf"><input id="tituloUpload" placeholder="Título do livro (opcional)"><button style="width:100%" onclick="uploadLivro()">⬆️ Enviar PDF</button><div class="muted" style="margin-top:7px">Envie um arquivo PDF. Se não informar o título, será usado o nome do arquivo.</div></div><div class="form"><input id="novoLivro" placeholder="Título do novo livro"><button style="width:100%" onclick="adicionarLivro()">+ Adicionar livro sem PDF</button></div><h4>📚 Gerenciar livros</h4>';
   if(!books.length)html+='<div class="muted">Nenhum livro cadastrado.</div>';
   for(const b of books){
     const capaAtual = b.capa && /^https?:\/\//i.test(String(b.capa)) ? `<img src="${esc(b.capa)}" style="width:54px;height:78px;object-fit:cover;border-radius:7px;vertical-align:middle;margin-right:8px" alt="Capa">` : "";
@@ -169,6 +163,29 @@ async function mostrarLivros(){
   }
   document.getElementById("adminContent").innerHTML=html;
 }
+async function uploadLivro(){
+  if(!currentUser){setError("Faça login como administrador novamente.");return}
+  const input=document.getElementById("arquivoLivro"),file=input?.files?.[0];
+  if(!file){setError("Selecione um arquivo PDF.");return}
+  if(file.type!=="application/pdf" && !file.name.toLowerCase().endsWith(".pdf")){setError("O arquivo precisa ser um PDF.");return}
+  let title=(document.getElementById("tituloUpload")?.value||"").trim();
+  if(!title)title=file.name.replace(/\.pdf$/i,"");
+  setStatus("Enviando livro PDF...");
+  const safe=file.name.replace(/[^a-zA-Z0-9._-]+/g,"-").replace(/-+/g,"-");
+  const path=`pdf/livro-${Date.now()}-${safe}`;
+  const {error:uploadError}=await sb.storage.from("livros").upload(path,file,{contentType:"application/pdf",upsert:false});
+  if(uploadError){setError("Erro ao enviar o PDF: "+uploadError.message);return}
+  const {data:urlData}=sb.storage.from("livros").getPublicUrl(path);
+  const pdf_url=urlData?.publicUrl;
+  if(!pdf_url){setError("O PDF foi enviado, mas não foi possível gerar o endereço público.");return}
+  const {error:dbError}=await sb.from("Livros").insert({title,pdf_url});
+  if(dbError){setError("PDF enviado, mas não foi possível cadastrar o livro: "+dbError.message);return}
+  setStatus("Livro enviado e cadastrado com sucesso!");
+  if(input)input.value="";
+  document.getElementById("tituloUpload").value="";
+  await mostrarLivros();
+}
+
 async function adicionarLivro(){
   const title=document.getElementById("novoLivro").value.trim();if(!title)return;
   const {error}=await sb.from("Livros").insert({title});
@@ -229,15 +246,23 @@ async function trocarCapa(id,file,input){
   mostrarLivros();
 }
 
-async function carregarCapaPublica(){
-  const {data,error}=await sb.from("Livros").select("title,capa").eq("id",1).maybeSingle();
-  if(error||!data)return;
-  const url=typeof data.capa==="string" && /^https?:\/\//i.test(data.capa) ? data.capa : null;
-  const img=document.querySelector("#bookCard .cover img");
-  if(img && url){img.src=url;img.alt="Capa de "+(data.title||"O Rei Sem Rosto");}
-  const titulo=document.querySelector("#bookCard h2");
-  if(titulo && data.title)titulo.textContent=data.title;
+async function carregarBiblioteca(){
+  const grid=document.getElementById("booksGrid");
+  if(!grid)return;
+  grid.innerHTML='<div class="loading">Carregando biblioteca...</div>';
+  const {data,error}=await sb.from("Livros").select("*").order("id",{ascending:true});
+  if(error){grid.innerHTML='<div class="book-empty">Não foi possível carregar a biblioteca.</div>';return}
+  const lista=data||[];
+  if(!lista.length){grid.innerHTML='<div class="book-empty">Nenhum livro cadastrado.</div>';return}
+  grid.innerHTML='<div class="books-grid">'+lista.map(b=>{
+    const titulo=esc(b.title??b.titulo??"Sem título");
+    const desc=esc(b.descricao||"Livro disponível para leitura.");
+    const capa=(b.capa&&/^https?:\/\//i.test(String(b.capa)))?esc(b.capa):(Number(b.id)===1?"Screenshot_20260909-190353~3.jpg":"");
+    const img=capa?`<img src="${capa}" alt="Capa de ${titulo}">`:`<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#777;font-weight:700;padding:20px">${titulo}</div>`;
+    return `<div class="card"><div class="cover">${img}</div><h2>${titulo}</h2><p>${desc}</p>${b.pdf_url?`<button class="primary" onclick="abrirLivro(${b.id})">▶ Ler livro</button>`:`<button disabled>PDF não disponível</button>`}</div>`;
+  }).join('')+'</div>';
 }
+
 
 async function mostrarCapitulos(){
   setStatus("Carregando capítulos...");
@@ -278,13 +303,18 @@ async function excluirCapitulo(id){
 function salvarEstado(view){localStorage.setItem(STORAGE_KEY,JSON.stringify({view,pagina:paginaAtual}));sessionStorage.setItem(VIEW_KEY,view)}
 function lerEstado(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{"view":"biblioteca","pagina":1}')}catch(e){return {view:"biblioteca",pagina:1}}}
 function salvarPosicao(){salvarEstado("leitor")}
-function abrirLivro(){
-  const e=lerEstado();paginaAtual=Number(e.pagina)||1;salvarEstado("leitor");
-  document.getElementById("biblioteca").style.display="none";document.getElementById("leitor").style.display="block";document.getElementById("controls").style.display="flex";window.scrollTo(0,0);
-  if(carregado)return renderPagina(paginaAtual);
-  document.getElementById("loading").style.display="flex";document.getElementById("pageCanvas").style.display="none";
-  pdfjsLib.getDocument(PDF_URL).promise.then(p=>{pdf=p;carregado=true;paginaAtual=Math.min(paginaAtual,p.numPages);renderPagina(paginaAtual)}).catch(()=>{document.getElementById("loading").style.display="none";document.getElementById("erro").style.display="block";document.getElementById("erro").innerHTML="Não foi possível carregar o PDF. Verifique se O-Rei-Sem-Rosto.pdf está no repositório."});
+async function abrirLivro(id=1){
+  const {data,error}=await sb.from("Livros").select("*").eq("id",id).maybeSingle();
+  if(error||!data){alert("Não foi possível encontrar este livro.");return}
+  if(!data.pdf_url){alert("Este livro ainda não possui um PDF enviado.");return}
+  livroAtual=data;PDF_URL=data.pdf_url;STORAGE_KEY="orei_sem_rosto_estado_v5_"+data.id;
+  pdf=null;carregado=false;renderToken++;
+  const estado=lerEstado();paginaAtual=Number(estado.pagina)||1;salvarEstado("leitor");
+  document.getElementById("biblioteca").style.display="none";document.getElementById("leitor").style.display="block";document.getElementById("controls").style.display="flex";document.querySelector(".reader-title").textContent=data.title||"Livro";window.scrollTo(0,0);
+  document.getElementById("loading").style.display="flex";document.getElementById("pageCanvas").style.display="none";document.getElementById("erro").style.display="none";
+  pdfjsLib.getDocument(PDF_URL).promise.then(p=>{pdf=p;carregado=true;paginaAtual=Math.min(paginaAtual,p.numPages);renderPagina(paginaAtual)}).catch(()=>{document.getElementById("loading").style.display="none";document.getElementById("erro").style.display="block";document.getElementById("erro").textContent="Não foi possível carregar o PDF deste livro."});
 }
+
 async function renderPagina(n){
   if(!pdf)return;n=Math.max(1,Math.min(n,pdf.numPages));paginaAtual=n;const token=++renderToken;
   const page=await pdf.getPage(n);if(token!==renderToken)return;
@@ -307,9 +337,9 @@ function cortarBordas(c){
 }
 function atualizarUI(){const total=pdf?pdf.numPages:63;document.getElementById("pageInfo").textContent=paginaAtual+" / "+total;document.getElementById("progress").style.width=(paginaAtual/total*100)+"%"}
 function proximaPagina(){if(pdf&&paginaAtual<pdf.numPages)renderPagina(paginaAtual+1)}function paginaAnterior(){if(pdf&&paginaAtual>1)renderPagina(paginaAtual-1)}
-function voltarBiblioteca(){salvarEstado("biblioteca");renderToken++;document.getElementById("leitor").style.display="none";document.getElementById("biblioteca").style.display="block";document.getElementById("controls").style.display="none";document.getElementById("progress").style.width="0"}
+function voltarBiblioteca(){salvarEstado("biblioteca");renderToken++;document.getElementById("leitor").style.display="none";document.getElementById("biblioteca").style.display="block";document.getElementById("controls").style.display="none";document.getElementById("progress").style.width="0";carregarBiblioteca()}
 function toggleModo(){document.body.classList.toggle("modo")}
-window.addEventListener("load",async()=>{await carregarCapaPublica();const {data}=await sb.auth.getUser();if(data?.user){currentUser=data.user;document.getElementById("adminArea").classList.remove("hidden");document.getElementById("adminEmail").textContent=currentUser.email||"";mostrarLivros()}
+window.addEventListener("load",async()=>{await carregarBiblioteca();const {data}=await sb.auth.getUser();if(data?.user){currentUser=data.user;document.getElementById("adminArea").classList.remove("hidden");document.getElementById("adminEmail").textContent=currentUser.email||"";mostrarLivros()}
   // Ao atualizar/recarregar a página, permanecer na biblioteca. A posição do leitor continua salva para quando o livro for aberto manualmente.
   document.getElementById("biblioteca").style.display="block";document.getElementById("leitor").style.display="none";document.getElementById("controls").style.display="none";
 });
