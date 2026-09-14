@@ -96,7 +96,7 @@ function setStatus(t){document.getElementById("adminStatus").textContent=t||"";d
 function setError(t){document.getElementById("adminError").textContent=t||"";document.getElementById("adminStatus").textContent=""}
 function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 
-async function abrirAdmin(){
+async async function abrirAdmin(){
   if(currentUser){document.getElementById("adminArea").classList.remove("hidden");document.getElementById("adminEmail").textContent=currentUser.email||"";mostrarLivros();return}
   const email=prompt("E-mail do administrador:");
   if(!email)return;
@@ -348,8 +348,7 @@ function atualizarUI(){const total=pdf?pdf.numPages:63;document.getElementById("
 function proximaPagina(){if(pdf&&paginaAtual<pdf.numPages)renderPagina(paginaAtual+1)}function paginaAnterior(){if(pdf&&paginaAtual>1)renderPagina(paginaAtual-1)}
 function voltarBiblioteca(){salvarEstado("biblioteca");renderToken++;document.getElementById("leitor").style.display="none";document.getElementById("biblioteca").style.display="block";document.getElementById("controls").style.display="none";document.getElementById("progress").style.width="0";carregarBiblioteca()}
 function toggleModo(){document.body.classList.toggle("modo")}
-window.addEventListener("load",async()=>{await carregarBiblioteca();const {data}=await sb.auth.getUser();if(data?.user){currentUser=data.user;document.getElementById("adminEmail").textContent=currentUser.email||""}}
-  // Ao atualizar/recarregar a página, permanecer na biblioteca. A posição do leitor continua salva para quando o livro for aberto manualmente.
+window.addEventListener("load",async()=>{await carregarBiblioteca();const {data}=await sb.auth.getUser();if(data?.user){currentUser=data.user;document.getElementById("adminEmail").textContent=currentUser.email||"";}
   document.getElementById("biblioteca").style.display="block";document.getElementById("leitor").style.display="none";document.getElementById("controls").style.display="none";
 });
 window.addEventListener("beforeunload",()=>{if(document.getElementById("leitor").style.display!=="none"){localStorage.setItem(STORAGE_KEY,JSON.stringify({view:"biblioteca",pagina:paginaAtual}));}});
