@@ -67,6 +67,33 @@ main{max-width:1100px;margin:auto;padding:14px}
 }
 </style>
 
+<style id="app-config-style">
+.header.app-header{padding:10px 12px 8px;background:rgba(10,10,14,.92);backdrop-filter:blur(12px);position:relative;z-index:10}
+.app-header img{display:block;width:min(88vw,520px);height:105px;object-fit:contain;margin:0 auto 2px}
+.header-title{font-size:13px;color:#aaa}
+.welcome{max-width:900px;margin:8px auto 14px;padding:8px 2px}
+.welcome h1{margin:0;font-size:24px}.welcome p{margin:5px 0;color:#999}
+.search-box{max-width:900px;margin:0 auto 18px;background:#202634;border:1px solid #2e3547;border-radius:12px;padding:14px 16px;display:flex;gap:12px;align-items:center}
+.search-box span{font-size:25px;color:#fff}.search-box input{flex:1;background:transparent;border:0;outline:0;color:#fff;font-size:15px}.search-box input::placeholder{color:#a4a8b2}
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;height:64px;z-index:80;display:flex;justify-content:center;gap:12px;background:rgba(16,18,27,.96);border-top:1px solid #303340;backdrop-filter:blur(14px);padding:7px 10px}
+.bottom-nav button{background:transparent;color:#ddd;padding:4px 22px;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:20px}
+.bottom-nav small{font-size:10px;color:#aaa}.bottom-nav button:active{background:#272b38}
+.settings-page{max-width:650px;margin:10px auto 80px;min-height:55vh}
+.settings-top{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;margin-bottom:28px}
+.settings-top button{width:42px;height:42px;padding:0;background:transparent;color:#fff;font-size:32px}
+.settings-top h2{text-align:center;font-size:16px;margin:0}
+.account-head{display:flex;align-items:center;gap:15px;padding:10px 4px 22px}
+.avatar{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#252a38;font-size:30px}
+.account-head h3{margin:0 0 4px}.account-head p{margin:0;color:#999}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px}
+.stats div{background:#202532;border-radius:12px;padding:15px;text-align:center}.stats b{display:block;font-size:19px}.stats span{font-size:11px;color:#999}
+.setting-list{display:flex;flex-direction:column;gap:3px}.setting-list button{width:100%;background:transparent;color:#fff;text-align:left;border-radius:12px;padding:14px 8px;display:flex;align-items:center;gap:16px}
+.setting-list button:hover{background:rgba(255,255,255,.04)}
+.setting-list button>span{width:34px;text-align:center;font-size:25px}.setting-list b{display:block;font-size:15px}.setting-list small{display:block;color:#999;margin-top:4px;font-size:12px}
+body.light-mode{background:#f0f1f4!important;color:#111}body.light-mode .header{background:#fff;color:#111}body.light-mode .search-box{background:#fff;color:#111}body.light-mode .search-box input{color:#111}body.light-mode .bottom-nav{background:#fff;color:#111}body.light-mode .bottom-nav button{color:#222}body.light-mode .settings-top button{color:#111}body.light-mode .setting-list button{color:#111}body.light-mode .stats div{background:#fff;border:1px solid #ddd}
+@media(max-width:700px){main{padding:10px 10px 78px}.app-header img{height:95px}.welcome{padding:4px}.welcome h1{font-size:21px}.books-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card{width:auto;margin:0;padding:8px;border-radius:14px}.card h2{font-size:15px}.card p{font-size:11px}.card button{font-size:11px;padding:9px 10px}.bottom-nav button{padding:4px 18px}}
+</style>
+
 </head>
 <body>
 
@@ -74,14 +101,52 @@ main{max-width:1100px;margin:auto;padding:14px}
   <img src="admin-logo-ca-sk8.png" alt="Administrador">
 </button>
 
-<header class="header"><img src="logo-ca-sk8.png" alt="Ca SK8 - Livros de Anime" style="display:block;width:min(92vw,700px);max-height:115px;object-fit:contain;margin:8px auto 4px"><p>Minha Biblioteca</p></header>
+<header class="header app-header">
+  <img src="logo-ca-sk8.png" alt="Ca SK8 - Livros de Anime">
+  <div class="header-title">Minha Biblioteca</div>
+</header>
 
 <main>
 <section id="biblioteca">
+  <div class="welcome">
+    <div>
+      <h1>Minha Biblioteca</h1>
+      <p>Suas histórias, seus mundos.</p>
+    </div>
+  </div>
+  <div class="search-box">
+    <span>⌕</span><input id="buscaLivro" oninput="filtrarLivros()" placeholder="Buscar um livro">
+  </div>
   <div id="booksGrid"></div>
 </section>
-<div style="text-align:center;margin:14px 0 4px"></div>
-<footer class="fuzzar-footer">Primeiro Modelo Fuzzar</footer>
+
+<section id="contaArea" class="settings-page hidden">
+  <div class="settings-top"><button onclick="mostrarTela('biblioteca')">‹</button><h2>CONTA</h2><span></span></div>
+  <div class="account-head"><div class="avatar">📚</div><div><h3>Minha conta</h3><p>Biblioteca Ca SK8</p></div></div>
+  <div class="stats"><div><b id="statLivros">0</b><span>Livros</span></div><div><b>0</b><span>Favoritos</span></div><div><b>0</b><span>Lidos</span></div></div>
+  <div class="setting-list">
+    <button onclick="mostrarTela('preferencias')"><span>⚙</span><div><b>Preferências</b><small>Ajuste as preferências do site</small></div></button>
+    <button><span>♡</span><div><b>Favoritos</b><small>Seu catálogo pessoal</small></div></button>
+    <button><span>🔔</span><div><b>Notificações</b><small>Suas notificações</small></div></button>
+  </div>
+</section>
+
+<section id="preferenciasArea" class="settings-page hidden">
+  <div class="settings-top"><button onclick="mostrarTela('conta')">‹</button><h2>PREFERÊNCIAS</h2><span></span></div>
+  <div class="setting-list">
+    <button onclick="toggleDarkMode()"><span>☾</span><div><b>Tema do app</b><small id="temaValor">Dark Mode</small></div></button>
+    <button onclick="toggleLeituraVertical()"><span>▤</span><div><b>Modo de leitura</b><small id="leituraValor">Vertical</small></div></button>
+    <button onclick="escolherIdioma()"><span>文A</span><div><b>Linguagem</b><small id="idiomaValor">Português (Brasil)</small></div></button>
+  </div>
+</section>
+
+<footer class="fuzzar-footer">Primeiro Modelo do Fuzzar</footer>
+
+<nav id="bottomNav" class="bottom-nav">
+  <button onclick="mostrarTela('biblioteca')"><span>⌂</span><small>Início</small></button>
+  <button onclick="mostrarTela('biblioteca');document.getElementById('buscaLivro')?.focus()"><span>⌕</span><small>Buscar</small></button>
+  <button onclick="mostrarTela('conta')"><span>●</span><small>Conta</small></button>
+</nav>
 
 <section id="leitor">
   <div class="reader-top">
@@ -390,5 +455,51 @@ window.addEventListener("load",async()=>{await carregarBiblioteca();const {data}
 });
 window.addEventListener("beforeunload",()=>{if(document.getElementById("leitor").style.display!=="none"){localStorage.setItem(STORAGE_KEY,JSON.stringify({view:"biblioteca",pagina:paginaAtual}));}});
 </script>
+<script id="app-config-js">
+function mostrarTela(tela){
+  const b=document.getElementById("biblioteca"), c=document.getElementById("contaArea"), p=document.getElementById("preferenciasArea");
+  [b,c,p].forEach(x=>x?.classList.add("hidden"));
+  if(tela==="conta") c?.classList.remove("hidden");
+  else if(tela==="preferencias") p?.classList.remove("hidden");
+  else b?.classList.remove("hidden");
+  document.getElementById("statLivros") && (document.getElementById("statLivros").textContent=books.length||0);
+  window.scrollTo(0,0);
+}
+function filtrarLivros(){
+  const termo=(document.getElementById("buscaLivro")?.value||"").toLowerCase().trim();
+  document.querySelectorAll("#booksGrid .card").forEach(card=>{
+    card.style.display=card.innerText.toLowerCase().includes(termo)?"":"none";
+  });
+}
+function toggleDarkMode(){
+  document.body.classList.toggle("light-mode");
+  const light=document.body.classList.contains("light-mode");
+  localStorage.setItem("cask8_theme",light?"light":"dark");
+  document.getElementById("temaValor").textContent=light?"Light Mode":"Dark Mode";
+}
+function toggleLeituraVertical(){
+  const atual=localStorage.getItem("cask8_read_mode")||"vertical";
+  const novo=atual==="vertical"?"paginado":"vertical";
+  localStorage.setItem("cask8_read_mode",novo);
+  document.getElementById("leituraValor").textContent=novo==="vertical"?"Vertical":"Paginado";
+}
+function escolherIdioma(){
+  const atual=localStorage.getItem("cask8_lang")||"pt";
+  const novo=atual==="pt"?"en":"pt";
+  localStorage.setItem("cask8_lang",novo);
+  document.getElementById("idiomaValor").textContent=novo==="pt"?"Português (Brasil)":"English";
+}
+(function(){
+  const light=localStorage.getItem("cask8_theme")==="light";
+  if(light)document.body.classList.add("light-mode");
+  setTimeout(()=>{
+    const t=document.getElementById("temaValor"),m=document.getElementById("leituraValor"),i=document.getElementById("idiomaValor");
+    if(t)t.textContent=light?"Light Mode":"Dark Mode";
+    if(m)m.textContent=(localStorage.getItem("cask8_read_mode")||"vertical")==="vertical"?"Vertical":"Paginado";
+    if(i)i.textContent=(localStorage.getItem("cask8_lang")||"pt")==="pt"?"Português (Brasil)":"English";
+  },0);
+})();
+</script>
+
 </body>
 </html>
