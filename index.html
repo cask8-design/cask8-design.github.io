@@ -161,6 +161,15 @@ html,body{overflow-x:hidden!important;overscroll-behavior-x:none!important}
 #pageCanvas{touch-action:pan-y pinch-zoom!important;max-width:100%!important}
 </style>
 
+<style id="favorites-style">
+.card-actions{display:flex;align-items:center;justify-content:center;gap:7px;width:100%}
+.card-actions .primary{flex:1}
+.fav-btn{width:42px!important;min-width:42px;height:42px;padding:0!important;border-radius:10px;font-size:24px!important;line-height:1;background:#202532;color:#fff}
+.fav-btn.favorited{color:#e33;background:#2a2025}
+.favorites-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px}
+.favorites-empty{text-align:center;color:#999;padding:50px 15px}
+</style>
+
 </head>
 <body>
 
@@ -190,12 +199,17 @@ html,body{overflow-x:hidden!important;overscroll-behavior-x:none!important}
 <section id="contaArea" class="settings-page hidden">
   <div class="settings-top"><button onclick="mostrarTela('biblioteca')">‹</button><h2>CONTA</h2><span></span></div>
   <div class="account-head"><div class="avatar">📚</div><div><h3>Minha conta</h3><p>Biblioteca Ca SK8</p></div></div>
-  <div class="stats"><div><b id="statLivros">0</b><span>Livros</span></div><div><b>0</b><span>Favoritos</span></div><div><b>0</b><span>Lidos</span></div></div>
+  <div class="stats"><div><b id="statLivros">0</b><span>Livros</span></div><div><b id="statFavoritos">0</b><span>Favoritos</span></div><div><b>0</b><span>Lidos</span></div></div>
   <div class="setting-list">
     <button onclick="mostrarTela('preferencias')"><span>⚙</span><div><b>Preferências</b><small>Ajuste as preferências do site</small></div></button>
-    <button><span>♡</span><div><b>Favoritos</b><small>Seu catálogo pessoal</small></div></button>
+    <button onclick="mostrarTela('favoritos')"><span>♡</span><div><b>Favoritos</b><small>Seu catálogo pessoal</small></div></button>
     <button><span>🔔</span><div><b>Notificações</b><small>Suas notificações</small></div></button>
   </div>
+</section>
+
+<section id="favoritosArea" class="settings-page hidden">
+  <div class="settings-top"><button onclick="mostrarTela('conta')">‹</button><h2>FAVORITOS</h2><span></span></div>
+  <div id="favoritosGrid" class="favorites-grid"></div>
 </section>
 
 <section id="preferenciasArea" class="settings-page hidden">
@@ -431,7 +445,8 @@ async function carregarBiblioteca(){
     const capa=(b.capa&&/^https?:\/\//i.test(String(b.capa)))?esc(b.capa):(Number(b.id)===1?"Screenshot_20260909-190353~3.jpg":"");
     const img=capa?`<img src="${capa}" alt="Capa de ${titulo}">`:`<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#777;font-weight:700;padding:20px">${titulo}</div>`;
     const temPdf=!!b.pdf_url || Number(b.id)===1;
-    return `<div class="card"><div class="cover">${img}</div><h2>${titulo}</h2><p>${desc}</p>${temPdf?`<button class="primary" onclick="abrirLivro(${b.id})">▶ Ler livro</button>`:`<button disabled>PDF não disponível</button>`}</div>`;
+    const fav=ehFavorito(b.id);
+    return `<div class="card"><div class="cover">${img}</div><h2>${titulo}</h2><p>${desc}</p><div class="card-actions">${temPdf?`<button class="primary" onclick="abrirLivro(${b.id})">▶ Ler livro</button>`:`<button disabled>PDF não disponível</button>`}<button class="fav-btn ${fav?"favorited":""}" onclick="alternarFavorito(${b.id},this)" aria-label="Favoritar">${fav?"♥":"♡"}</button></div></div>`;
   }).join('')+'</div>';
 }
 
@@ -490,7 +505,12 @@ async function abrirLivro(id=1){
   const estado=lerEstado();paginaAtual=Number(estado.pagina)||1;salvarEstado("leitor");
   document.getElementById("biblioteca").style.display="none";document.getElementById("leitor").style.display="block";document.getElementById("controls").style.display="flex";document.getElementById("bottomNav").style.display="none";document.querySelector(".reader-title").textContent=data.title||"Livro";window.scrollTo(0,0);
   document.getElementById("loading").style.display="flex";document.getElementById("pageCanvas").style.display="none";document.getElementById("erro").style.display="none";
-  pdfjsLib.getDocument(PDF_URL).promise.then(p=>{pdf=p;carregado=true;paginaAtual=Math.min(paginaAtual,p.numPages);localStorage.setItem("cask8_read_mode","paginado");document.body.classList.remove("leitura-vertical");const lv=document.getElementById("leituraValor");if(lv)lv.textContent="Paginado";renderPagina(paginaAtual)}).catch(()=>{document.getElementById("loading").style.display="none";document.getElementById("erro").style.display="block";document.getElementById("erro").textContent="Não foi possível carregar o PDF deste livro."});
+  const modoInicial=localStorage.getItem("cask8_read_mode")||"paginado";
+  pdfjsLib.getDocument(PDF_URL).promise.then(p=>{pdf=p;carregado=true;paginaAtual=Math.min(paginaAtual,p.numPages);
+    document.body.classList.toggle("leitura-vertical",modoInicial==="vertical");
+    const lv=document.getElementById("leituraValor");if(lv)lv.textContent=modoInicial==="vertical"?"Vertical":"Paginado";
+    if(modoInicial==="vertical") renderPaginaVertical(); else renderPagina(paginaAtual);
+  }).catch(()=>{document.getElementById("loading").style.display="none";document.getElementById("erro").style.display="block";document.getElementById("erro").textContent="Não foi possível carregar o PDF deste livro."});
 }
 
 async function renderPagina(n){
@@ -524,12 +544,14 @@ window.addEventListener("beforeunload",()=>{if(document.getElementById("leitor")
 </script>
 <script id="app-config-js">
 function mostrarTela(tela){
-  const b=document.getElementById("biblioteca"), c=document.getElementById("contaArea"), p=document.getElementById("preferenciasArea");
-  [b,c,p].forEach(x=>x?.classList.add("hidden"));
+  const b=document.getElementById("biblioteca"), c=document.getElementById("contaArea"), p=document.getElementById("preferenciasArea"), f=document.getElementById("favoritosArea");
+  [b,c,p,f].forEach(x=>x?.classList.add("hidden"));
   if(tela==="conta") c?.classList.remove("hidden");
   else if(tela==="preferencias") p?.classList.remove("hidden");
+  else if(tela==="favoritos"){f?.classList.remove("hidden");renderFavoritos();}
   else b?.classList.remove("hidden");
   const st=document.getElementById("statLivros"); if(st) st.textContent=books.length||0;
+  const sf=document.getElementById("statFavoritos"); if(sf) sf.textContent=favoritosIds().length;
   window.scrollTo(0,0);
 }
 function filtrarLivros(){
@@ -555,124 +577,93 @@ function toggleLeituraVertical(){
 function aplicarModoLeitura(){
   const vertical=localStorage.getItem("cask8_read_mode")==="vertical";
   document.body.classList.toggle("leitura-vertical",vertical);
-  if(!vertical){
+  if(vertical){
+    if(pdf && typeof renderPaginaVertical==="function") renderPaginaVertical();
+  }else{
     const area=document.getElementById("pagina");
     if(area) area.innerHTML='<div class="loading" id="loading">Carregando página...</div><canvas id="pageCanvas"></canvas>';
     if(pdf && typeof renderPagina==="function") renderPagina(paginaAtual);
-  }else if(pdf && typeof renderPaginaVertical==="function"){
-    renderPaginaVertical();
   }
 }
 async function renderPaginaVertical(){
   if(!pdf)return;
   const area=document.getElementById("pagina");
   if(!area)return;
-
-  area.innerHTML="";
-  document.getElementById("loading").style.display="flex";
-  document.getElementById("loading").textContent="Preparando leitura vertical...";
-
+  area.innerHTML='<div class="loading" id="loadingVertical">Preparando leitura vertical...</div>';
+  const loading=document.getElementById("loadingVertical");
   const total=pdf.numPages;
-  const holders=[];
+  const first=await pdf.getPage(1);
+  const base=first.getViewport({scale:1});
+  const items=[];
   for(let n=1;n<=total;n++){
-    const page=await pdf.getPage(n);
-    const base=page.getViewport({scale:1});
-    const ratio=base.height/base.width;
     const holder=document.createElement("div");
     holder.className="vertical-holder";
     holder.dataset.page=n;
     holder.style.aspectRatio=`${base.width} / ${base.height}`;
-    const placeholder=document.createElement("div");
-    placeholder.className="vertical-placeholder";
-    placeholder.style.height="100%";
-    placeholder.textContent=`Página ${n} / ${total}`;
-    holder.appendChild(placeholder);
+    const ph=document.createElement("div");
+    ph.className="vertical-placeholder";
+    ph.style.height="100%";
+    ph.textContent=`Página ${n} / ${total}`;
+    holder.appendChild(ph);
     area.appendChild(holder);
-    holders.push({holder,n,ratio});
+    items.push({holder,n});
   }
-
-  document.getElementById("loading").style.display="none";
-  document.getElementById("pageCanvas").style.display="none";
-  document.getElementById("pageInfo").textContent="1 / "+total;
-  document.getElementById("progress").style.width="0%";
-
+  if(loading)loading.style.display="none";
+  const oldCanvas=document.getElementById("pageCanvas");if(oldCanvas)oldCanvas.style.display="none";
   const rendered=new Set();
-  const renderOne=async(item)=>{
-    if(rendered.has(item.n))return;
+  async function renderOne(item){
+    if(!item||rendered.has(item.n))return;
     rendered.add(item.n);
     try{
       const page=await pdf.getPage(item.n);
       const base=page.getViewport({scale:1});
-      const cssScale=Math.max((window.innerWidth-12)/base.width,1);
+      const cssScale=Math.max((window.innerWidth-16)/base.width,1);
       const dpr=Math.min(window.devicePixelRatio||1,2);
-      const renderScale=Math.min(cssScale*dpr,3);
-      const vp=page.getViewport({scale:renderScale});
+      const scale=Math.min(cssScale*dpr,3);
+      const vp=page.getViewport({scale});
       const cssVp=page.getViewport({scale:cssScale});
-
       const c=document.createElement("canvas");
       c.className="vertical-page";
-      c.width=Math.floor(vp.width);
-      c.height=Math.floor(vp.height);
-      c.style.width=Math.floor(cssVp.width)+"px";
-      c.style.height="auto";
-
-      await page.render({
-        canvasContext:c.getContext("2d",{alpha:false}),
-        viewport:vp,
-        background:"#fff"
-      }).promise;
-
-      item.holder.innerHTML="";
+      c.width=Math.floor(vp.width);c.height=Math.floor(vp.height);
+      c.style.width=Math.floor(cssVp.width)+"px";c.style.height="auto";
+      await page.render({canvasContext:c.getContext("2d",{alpha:false}),viewport:vp,background:"#fff"}).promise;
       item.holder.style.aspectRatio="auto";
-      item.holder.appendChild(c);
+      item.holder.innerHTML="";item.holder.appendChild(c);
     }catch(e){
       rendered.delete(item.n);
-      item.holder.innerHTML="";
-      const err=document.createElement("div");
-      err.className="vertical-placeholder";
-      err.style.height="160px";
-      err.textContent="Não foi possível carregar esta página.";
-      item.holder.appendChild(err);
+      item.holder.innerHTML='<div class="vertical-placeholder" style="height:160px">Erro ao carregar esta página.</div>';
     }
-  };
-
-  if("IntersectionObserver" in window){
-    const observer=new IntersectionObserver(entries=>{
-      entries.forEach(entry=>{
-        if(entry.isIntersecting){
-          const item=holders.find(x=>x.holder===entry.target);
-          if(item)renderOne(item);
-          const idx=holders.indexOf(item);
-          if(idx>=0){
-            if(holders[idx+1])renderOne(holders[idx+1]);
-            if(holders[idx-1])renderOne(holders[idx-1]);
-          }
-        }
-      });
-    },{rootMargin:"700px 0px"});
-    holders.forEach(x=>observer.observe(x.holder));
-  }else{
-    await renderOne(holders[0]);
-    if(holders[1])renderOne(holders[1]);
   }
-
-  let ticking=false;
-  window.addEventListener("scroll",()=>{
-    if(ticking)return;
-    ticking=true;
-    requestAnimationFrame(()=>{
-      const vh=window.innerHeight||1;
-      let current=1;
-      for(const item of holders){
-        const r=item.holder.getBoundingClientRect();
-        if(r.top<=vh*0.45 && r.bottom>=vh*0.45){current=item.n;break;}
+  if("IntersectionObserver" in window){
+    const obs=new IntersectionObserver(entries=>{
+      for(const entry of entries)if(entry.isIntersecting){
+        const item=items.find(x=>x.holder===entry.target);
+        if(!item)continue;
+        renderOne(item);
+        const i=items.indexOf(item);
+        if(items[i-1])renderOne(items[i-1]);
+        if(items[i+1])renderOne(items[i+1]);
+        if(items[i+2])renderOne(items[i+2]);
       }
-      paginaAtual=current;
-      document.getElementById("pageInfo").textContent=current+" / "+total;
-      document.getElementById("progress").style.width=(current/total*100)+"%";
-      ticking=false;
-    });
-  },{passive:true});
+    },{rootMargin:"1000px 0px"});
+    items.forEach(x=>obs.observe(x.holder));
+  }else{
+    for(let i=0;i<Math.min(2,items.length);i++)renderOne(items[i]);
+  }
+  const update=()=>{
+    const target=window.innerHeight*.4;
+    let current=1;
+    for(const item of items){
+      const r=item.holder.getBoundingClientRect();
+      if(r.top<=target && r.bottom>=target){current=item.n;break;}
+    }
+    paginaAtual=current;
+    const info=document.getElementById("pageInfo"),prog=document.getElementById("progress");
+    if(info)info.textContent=current+" / "+total;
+    if(prog)prog.style.width=(current/total*100)+"%";
+  };
+  window.addEventListener("scroll",update,{passive:true});
+  update();
 }
 function escolherIdioma(){
   const novo=(localStorage.getItem("cask8_lang")||"pt")==="pt"?"en":"pt";
@@ -710,10 +701,42 @@ function aplicarIdioma(){
 <script id="reader-reset">
 (function(){
   if(!sessionStorage.getItem("cask8_stable_reader_v1")){
-    localStorage.setItem("cask8_read_mode","paginado");
+    if(!localStorage.getItem("cask8_read_mode")) localStorage.setItem("cask8_read_mode","paginado");
     sessionStorage.setItem("cask8_stable_reader_v1","1");
   }
 })();
+</script>
+
+<script id="favorites-js">
+function favoritosIds(){
+  try{return JSON.parse(localStorage.getItem("cask8_favoritos")||"[]").map(Number)}catch(e){return[]}
+}
+function ehFavorito(id){return favoritosIds().includes(Number(id))}
+function alternarFavorito(id,btn){
+  let ids=favoritosIds(), n=Number(id);
+  if(ids.includes(n)) ids=ids.filter(x=>x!==n); else ids.push(n);
+  localStorage.setItem("cask8_favoritos",JSON.stringify(ids));
+  if(btn){btn.textContent=ids.includes(n)?"♥":"♡";btn.classList.toggle("favorited",ids.includes(n))}
+  renderFavoritos();
+}
+async function renderFavoritos(){
+  const grid=document.getElementById("favoritosGrid"); if(!grid)return;
+  const ids=favoritosIds();
+  if(!books.length){
+    const r=await sb.from("Livros").select("*").order("id",{ascending:true});
+    if(!r.error) books=r.data||[];
+  }
+  const lista=books.filter(b=>ids.includes(Number(b.id)));
+  if(!lista.length){grid.innerHTML='<div class="favorites-empty">Você ainda não adicionou livros aos favoritos.<br><br>Toque no ♡ de um livro para adicioná-lo.</div>';return}
+  grid.innerHTML=lista.map(b=>{
+    const titulo=esc(b.title||"Sem título");
+    const desc=esc(b.descricao||"Livro disponível para leitura.");
+    const capa=(b.capa&&/^https?:\/\//i.test(String(b.capa)))?esc(b.capa):(Number(b.id)===1?"Screenshot_20260909-190353~3.jpg":"");
+    const img=capa?`<img src="${capa}" alt="Capa de ${titulo}">`:`<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#777;font-weight:700;padding:20px">${titulo}</div>`;
+    const temPdf=!!b.pdf_url||Number(b.id)===1;
+    return `<div class="card"><div class="cover">${img}</div><h2>${titulo}</h2><p>${desc}</p><div class="card-actions">${temPdf?`<button class="primary" onclick="abrirLivro(${b.id})">▶ Ler livro</button>`:`<button disabled>PDF não disponível</button>`}<button class="fav-btn favorited" onclick="alternarFavorito(${b.id},this)">♥</button></div></div>`;
+  }).join("");
+}
 </script>
 
 </body>
