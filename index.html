@@ -90,7 +90,7 @@ main{max-width:1100px;margin:auto;padding:14px}
 .setting-list{display:flex;flex-direction:column;gap:3px}.setting-list button{width:100%;background:transparent;color:#fff;text-align:left;border-radius:12px;padding:14px 8px;display:flex;align-items:center;gap:16px}
 .setting-list button:hover{background:rgba(255,255,255,.04)}
 .setting-list button>span{width:34px;text-align:center;font-size:25px}.setting-list b{display:block;font-size:15px}.setting-list small{display:block;color:#999;margin-top:4px;font-size:12px}
-html.light-mode,body.light-mode{background:#f0f1f4!important;color:#111;background-image:none!important}body.light-mode .header{border-color:#d6d8df}body.light-mode .card,body.light-mode .admin{background:#fff;color:#111;border-color:#ddd}body.light-mode .fuzzar-footer{color:#777}body.light-mode .header{background:#fff;color:#111}body.light-mode .search-box{background:#fff;color:#111}body.light-mode .search-box input{color:#111}body.light-mode .bottom-nav{background:#fff;color:#111;border-color:#ddd}body.light-mode .bottom-nav button{color:#222}body.light-mode .settings-top button{color:#111}body.light-mode .setting-list button{color:#111}body.light-mode .stats div{background:#fff;border:1px solid #ddd}
+html.light-mode,body.light-mode{background:#f0f1f4 url("fundo-ca-sk8.png") center top / cover fixed no-repeat!important;color:#111}body.light-mode .header{border-color:#d6d8df}body.light-mode .card,body.light-mode .admin{background:#fff;color:#111;border-color:#ddd}body.light-mode .fuzzar-footer{color:#777}body.light-mode .header{background:#fff;color:#111}body.light-mode .search-box{background:#fff;color:#111}body.light-mode .search-box input{color:#111}body.light-mode .bottom-nav{background:#fff;color:#111;border-color:#ddd}body.light-mode .bottom-nav button{color:#222}body.light-mode .settings-top button{color:#111}body.light-mode .setting-list button{color:#111}body.light-mode .stats div{background:#fff;border:1px solid #ddd}
 @media(max-width:700px){main{padding:10px 10px 78px}.app-header img{height:95px}.welcome{padding:4px}.welcome h1{font-size:21px}.books-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card{width:auto;margin:0;padding:8px;border-radius:14px}.card h2{font-size:15px}.card p{font-size:11px}.card button{font-size:11px;padding:9px 10px}.bottom-nav button{padding:4px 18px}}
 </style>
 
@@ -114,6 +114,44 @@ body.light-mode #pagina .vertical-page{box-shadow:0 4px 15px #9995}
     padding-bottom:20px;
   }
 }
+</style>
+
+
+<style id="final-config-fix">
+body.light-mode:before{
+  content:"";position:fixed;inset:0;z-index:-1;
+  background:rgba(245,246,249,.82);
+  pointer-events:none;
+}
+.leitura-vertical #pagina{
+  display:block!important;
+  width:100%;
+  padding-bottom:130px!important;
+}
+.vertical-holder{
+  width:min(100%,900px);
+  margin:0 auto 12px;
+  background:#111;
+  position:relative;
+  overflow:hidden;
+}
+.vertical-holder .vertical-page{
+  display:block;
+  width:100%;
+  height:auto;
+  margin:0 auto;
+  background:#fff;
+}
+.vertical-placeholder{
+  width:100%;
+  background:#111;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#aaa;
+  font-size:12px;
+}
+body.light-mode .vertical-placeholder{background:#ddd;color:#555}
 </style>
 
 </head>
@@ -511,31 +549,118 @@ function aplicarModoLeitura(){
   const vertical=(localStorage.getItem("cask8_read_mode")||"vertical")==="vertical";
   document.body.classList.toggle("leitura-vertical",vertical);
   if(!vertical && pdf && typeof renderPagina==="function") renderPagina(paginaAtual);
-  if(vertical && pdf && typeof renderPaginaVertical==="function") renderPaginaVertical();
+  if(vertical && pdf && typeof renderPaginaVertical==="function"){document.getElementById("pageCanvas").style.display="none";renderPaginaVertical();}
 }
 async function renderPaginaVertical(){
   if(!pdf)return;
-  const area=document.getElementById("pagina"); if(!area)return;
+  const area=document.getElementById("pagina");
+  if(!area)return;
+
   area.innerHTML="";
+  document.getElementById("loading").style.display="flex";
+  document.getElementById("loading").textContent="Preparando leitura vertical...";
+
   const total=pdf.numPages;
+  const holders=[];
   for(let n=1;n<=total;n++){
     const page=await pdf.getPage(n);
     const base=page.getViewport({scale:1});
-    const cssScale=Math.max((window.innerWidth-12)/base.width,1);
-    const dpr=Math.min(window.devicePixelRatio||1,3);
-    const vp=page.getViewport({scale:Math.min(cssScale*dpr,4)});
-    const cssVp=page.getViewport({scale:cssScale});
-    const c=document.createElement("canvas"); c.className="vertical-page";
-    c.width=Math.floor(vp.width); c.height=Math.floor(vp.height);
-    c.style.width=Math.floor(cssVp.width)+"px"; c.style.height="auto";
-    c.getContext("2d",{alpha:false});
-    await page.render({canvasContext:c.getContext("2d",{alpha:false}),viewport:vp,background:"#fff"}).promise;
-    area.appendChild(c);
+    const ratio=base.height/base.width;
+    const holder=document.createElement("div");
+    holder.className="vertical-holder";
+    holder.dataset.page=n;
+    holder.style.aspectRatio=`${base.width} / ${base.height}`;
+    const placeholder=document.createElement("div");
+    placeholder.className="vertical-placeholder";
+    placeholder.style.height="100%";
+    placeholder.textContent=`Página ${n} / ${total}`;
+    holder.appendChild(placeholder);
+    area.appendChild(holder);
+    holders.push({holder,n,ratio});
   }
+
   document.getElementById("loading").style.display="none";
   document.getElementById("pageCanvas").style.display="none";
   document.getElementById("pageInfo").textContent="1 / "+total;
-  document.getElementById("progress").style.width="100%";
+  document.getElementById("progress").style.width="0%";
+
+  const rendered=new Set();
+  const renderOne=async(item)=>{
+    if(rendered.has(item.n))return;
+    rendered.add(item.n);
+    try{
+      const page=await pdf.getPage(item.n);
+      const base=page.getViewport({scale:1});
+      const cssScale=Math.max((window.innerWidth-12)/base.width,1);
+      const dpr=Math.min(window.devicePixelRatio||1,2);
+      const renderScale=Math.min(cssScale*dpr,3);
+      const vp=page.getViewport({scale:renderScale});
+      const cssVp=page.getViewport({scale:cssScale});
+
+      const c=document.createElement("canvas");
+      c.className="vertical-page";
+      c.width=Math.floor(vp.width);
+      c.height=Math.floor(vp.height);
+      c.style.width=Math.floor(cssVp.width)+"px";
+      c.style.height="auto";
+
+      await page.render({
+        canvasContext:c.getContext("2d",{alpha:false}),
+        viewport:vp,
+        background:"#fff"
+      }).promise;
+
+      item.holder.innerHTML="";
+      item.holder.style.aspectRatio="auto";
+      item.holder.appendChild(c);
+    }catch(e){
+      rendered.delete(item.n);
+      item.holder.innerHTML="";
+      const err=document.createElement("div");
+      err.className="vertical-placeholder";
+      err.style.height="160px";
+      err.textContent="Não foi possível carregar esta página.";
+      item.holder.appendChild(err);
+    }
+  };
+
+  if("IntersectionObserver" in window){
+    const observer=new IntersectionObserver(entries=>{
+      entries.forEach(entry=>{
+        if(entry.isIntersecting){
+          const item=holders.find(x=>x.holder===entry.target);
+          if(item)renderOne(item);
+          const idx=holders.indexOf(item);
+          if(idx>=0){
+            if(holders[idx+1])renderOne(holders[idx+1]);
+            if(holders[idx-1])renderOne(holders[idx-1]);
+          }
+        }
+      });
+    },{rootMargin:"700px 0px"});
+    holders.forEach(x=>observer.observe(x.holder));
+  }else{
+    await renderOne(holders[0]);
+    if(holders[1])renderOne(holders[1]);
+  }
+
+  let ticking=false;
+  window.addEventListener("scroll",()=>{
+    if(ticking)return;
+    ticking=true;
+    requestAnimationFrame(()=>{
+      const vh=window.innerHeight||1;
+      let current=1;
+      for(const item of holders){
+        const r=item.holder.getBoundingClientRect();
+        if(r.top<=vh*0.45 && r.bottom>=vh*0.45){current=item.n;break;}
+      }
+      paginaAtual=current;
+      document.getElementById("pageInfo").textContent=current+" / "+total;
+      document.getElementById("progress").style.width=(current/total*100)+"%";
+      ticking=false;
+    });
+  },{passive:true});
 }
 function escolherIdioma(){
   const novo=(localStorage.getItem("cask8_lang")||"pt")==="pt"?"en":"pt";
@@ -566,7 +691,7 @@ function aplicarIdioma(){
   const t=document.getElementById("temaValor");if(t)t.textContent=document.body.classList.contains("light-mode")?"Light Mode":"Dark Mode";
   const m=document.getElementById("leituraValor");if(m)m.textContent=(localStorage.getItem("cask8_read_mode")||"vertical")==="vertical"?"Vertical":"Paginado";
 }
-(function(){aplicarTema();aplicarIdioma();const m=localStorage.getItem("cask8_read_mode")||"vertical";const el=document.getElementById("leituraValor");if(el)el.textContent=m==="vertical"?"Vertical":"Paginado";})();
+(function(){aplicarTema();aplicarIdioma();const m=localStorage.getItem("cask8_read_mode")||"paginado";const el=document.getElementById("leituraValor");if(el)el.textContent=m==="vertical"?"Vertical":"Paginado";})();
 </script>
 
 </body>
