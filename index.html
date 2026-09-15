@@ -293,7 +293,7 @@ const SUPABASE_KEY="sb_publishable_BJVioT8Oluxs2G97HcijnQ_P_s0PdOI";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 let PDF_URL="O-Rei-Sem-Rosto.pdf"; let STORAGE_KEY="orei_sem_rosto_estado_v5_1"; const VIEW_KEY="orei_sem_rosto_view_v5";
-let pdf=null,paginaAtual=1,carregado=false,renderToken=0,currentUser=null,books=[],livroAtual=null;
+let pdf=null,paginaAtual=1,carregado=false,renderToken=0,currentUser=null,books=[],livroAtual=null,verticalScrollHandler=null;
 
 pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
@@ -629,6 +629,18 @@ async function renderPaginaVertical(){
   if(!pdf)return;
   const area=document.getElementById("pagina");
   if(!area)return;
+
+  // Guarda a posição ANTES de reconstruir a lista de páginas. A versão anterior
+  // chamava update() antes da restauração e acabava salvando scrollY=0.
+  const estadoSalvo=lerEstado();
+  const paginaSalva=Math.max(1,Math.min(Number(estadoSalvo.pagina)||1,pdf.numPages));
+  const scrollSalvo=Math.max(0,Number(estadoSalvo.scrollY)||0);
+
+  if(verticalScrollHandler){
+    window.removeEventListener("scroll",verticalScrollHandler);
+    verticalScrollHandler=null;
+  }
+
   area.innerHTML='<div class="loading" id="loadingVertical">Preparando leitura vertical...</div>';
   const loading=document.getElementById("loadingVertical");
   const total=pdf.numPages;
@@ -651,6 +663,7 @@ async function renderPaginaVertical(){
   if(loading)loading.style.display="none";
   const oldCanvas=document.getElementById("pageCanvas");if(oldCanvas)oldCanvas.style.display="none";
   const rendered=new Set();
+
   async function renderOne(item){
     if(!item||rendered.has(item.n))return;
     rendered.add(item.n);
@@ -662,6 +675,8 @@ async function renderPaginaVertical(){
       const scale=Math.min(cssScale*dpr,3);
       const vp=page.getViewport({scale});
       const cssVp=page.getViewport({scale:cssScale});
+      const oldTop=item.holder.getBoundingClientRect().top;
+      const oldHeight=item.holder.getBoundingClientRect().height;
       const c=document.createElement("canvas");
       c.className="vertical-page";
       c.width=Math.floor(vp.width);c.height=Math.floor(vp.height);
@@ -670,11 +685,39 @@ async function renderPaginaVertical(){
       cortarBordas(c);
       item.holder.style.aspectRatio="auto";
       item.holder.innerHTML="";item.holder.appendChild(c);
+
+      // Se a página renderizada estiver acima do que o usuário está vendo,
+      // compensa a mudança de altura causada pelo corte das bordas. Assim a
+      // leitura não "pula" enquanto novas páginas são carregadas.
+      const newHeight=item.holder.getBoundingClientRect().height;
+      if(oldTop < window.innerHeight && newHeight !== oldHeight){
+        window.scrollBy(0,newHeight-oldHeight);
+      }
     }catch(e){
       rendered.delete(item.n);
       item.holder.innerHTML='<div class="vertical-placeholder" style="height:160px">Erro ao carregar esta página.</div>';
     }
   }
+
+  // Restaura por página + posição relativa, e não somente por scrollY.
+  async function restaurarPosicao(){
+    const alvo=items[paginaSalva-1];
+    if(!alvo)return;
+    await renderOne(alvo);
+    for(const n of [paginaSalva-2,paginaSalva-1,paginaSalva+1]){
+      if(n>=1 && n<=total) await renderOne(items[n-1]);
+    }
+    const destino=alvo.holder.getBoundingClientRect().top + window.scrollY;
+    const altura=Math.max(1,alvo.holder.getBoundingClientRect().height);
+    const proporcao=Math.min(0.95,Math.max(0,scrollSalvo/(altura||1)));
+    // Se houver um scroll salvo real, prioriza-o; depois da renderização dos
+    // vizinhos ele fica estável graças à compensação acima.
+    const top=Math.max(0,scrollSalvo);
+    window.scrollTo(0,top);
+    // Segunda correção usando a página salva caso o layout tenha mudado.
+    requestAnimationFrame(()=>window.scrollTo(0,Math.max(0,destino + (top-(destino + proporcao*altura)))));
+  }
+
   if("IntersectionObserver" in window){
     const obs=new IntersectionObserver(entries=>{
       for(const entry of entries)if(entry.isIntersecting){
@@ -691,11 +734,12 @@ async function renderPaginaVertical(){
   }else{
     for(let i=0;i<Math.min(2,items.length);i++)renderOne(items[i]);
   }
+
   let ultimoSalvamento=0;
   let salvamentoTimer=0;
-  const update=()=>{
+  verticalScrollHandler=()=>{
     const target=window.innerHeight*.4;
-    let current=1;
+    let current=paginaAtual||1;
     for(const item of items){
       const r=item.holder.getBoundingClientRect();
       if(r.top<=target && r.bottom>=target){current=item.n;break;}
@@ -705,16 +749,23 @@ async function renderPaginaVertical(){
     if(info)info.textContent=current+" / "+total;
     if(prog)prog.style.width=(current/total*100)+"%";
     const agora=Date.now();
-    if(agora-ultimoSalvamento>350){ultimoSalvamento=agora;salvarPosicao();}
-    else{clearTimeout(salvamentoTimer);salvamentoTimer=setTimeout(()=>{ultimoSalvamento=Date.now();salvarPosicao()},380);}
+    if(agora-ultimoSalvamento>350){
+      ultimoSalvamento=agora;
+      salvarPosicao();
+    }else{
+      clearTimeout(salvamentoTimer);
+      salvamentoTimer=setTimeout(()=>{ultimoSalvamento=Date.now();salvarPosicao()},380);
+    }
   };
-  window.addEventListener("scroll",update,{passive:true});
-  update();
-  const posicaoSalva=Math.max(0,Number(lerEstado().scrollY)||0);
-  requestAnimationFrame(()=>window.scrollTo(0,posicaoSalva));
-  setTimeout(()=>window.scrollTo(0,posicaoSalva),250);
-  setTimeout(()=>window.scrollTo(0,posicaoSalva),1000);
+  window.addEventListener("scroll",verticalScrollHandler,{passive:true});
+
+  // Atualiza a interface sem sobrescrever a posição salva.
+  const info=document.getElementById("pageInfo"),prog=document.getElementById("progress");
+  if(info)info.textContent=paginaSalva+" / "+total;
+  if(prog)prog.style.width=(paginaSalva/total*100)+"%";
+  await restaurarPosicao();
 }
+
 function escolherIdioma(){
   const novo=(localStorage.getItem("cask8_lang")||"pt")==="pt"?"en":"pt";
   localStorage.setItem("cask8_lang",novo); aplicarIdioma();
