@@ -182,36 +182,6 @@ html,body{overflow-x:hidden!important;overscroll-behavior-x:none!important}
 body.light-mode .vertical-exit{background:rgba(255,255,255,.94);color:#111;border:1px solid #ddd}
 @media(max-width:520px){.vertical-exit{top:76px;left:8px;padding:8px 11px;font-size:11px}}
 </style>
-
-<style id="vertical-full-page-v7">
-.leitura-vertical #pagina{
-  width:100%!important;
-  max-width:100%!important;
-  overflow-x:hidden!important;
-}
-.leitura-vertical .vertical-holder{
-  width:100%!important;
-  max-width:100%!important;
-  height:auto!important;
-  aspect-ratio:auto!important;
-  overflow:visible!important;
-  margin:0 0 14px!important;
-  padding:0!important;
-  background:transparent!important;
-}
-.leitura-vertical .vertical-holder .vertical-page{
-  display:block!important;
-  width:100%!important;
-  max-width:100%!important;
-  height:auto!important;
-  margin:0!important;
-  padding:0!important;
-  object-fit:contain!important;
-  box-shadow:none!important;
-  border:0!important;
-}
-</style>
-
 </head>
 <body autocomplete="off">
 
@@ -629,59 +599,11 @@ async function renderPagina(n){
     if(paginaAtual===pdf.numPages) marcarLivroComoLido();
   });
 }
-function cortarBordas(canvas){
-  // Não recorta pixels da arte. Apenas remove visualmente a margem branca
-  // externa usando um wrapper/clip, preservando 100% da página.
-  canvas.style.background = "#fff";
-  canvas.style.objectFit = "contain";
-  canvas.style.display = "block";
-  canvas.style.margin = "0 auto";
-  canvas.style.clipPath = "none";
-  canvas.style.transform = "none";
+function cortarBordas(c){
+  const ctx=c.getContext("2d"),w=c.width,h=c.height,data=ctx.getImageData(0,0,w,h).data,step=4;let minX=w,minY=h,maxX=-1,maxY=-1;
+  for(let y=0;y<h;y+=step)for(let x=0;x<w;x+=step){const i=(y*w+x)*4,r=data[i],g=data[i+1],b=data[i+2];if(r<242||g<242||b<242){minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y)}}
+  if(maxX<0)return;minX=Math.max(0,minX-3);minY=Math.max(0,minY-3);maxX=Math.min(w-1,maxX+3);maxY=Math.min(h-1,maxY+3);const cw=maxX-minX+1,ch=maxY-minY+1;if(cw<w*.98||ch<h*.98){const t=document.createElement("canvas");t.width=cw;t.height=ch;const tc=t.getContext("2d");tc.imageSmoothingEnabled=false;tc.drawImage(c,minX,minY,cw,ch,0,0,cw,ch);c.width=cw;c.height=ch;ctx.drawImage(t,0,0)}
 }
-
-function cortarBordasVertical(c){
-  const ctx=c.getContext("2d",{willReadFrequently:true});
-  const w=c.width,h=c.height;
-  if(!w||!h)return c;
-  // Procura somente a cada 4 pixels para reduzir uso de memória/CPU.
-  const step=4;
-  const data=ctx.getImageData(0,0,w,h).data;
-  let minX=w,minY=h,maxX=-1,maxY=-1;
-  for(let y=0;y<h;y+=step){
-    for(let x=0;x<w;x+=step){
-      const i=(y*w+x)*4;
-      if(data[i]<245 || data[i+1]<245 || data[i+2]<245){
-        if(x<minX)minX=x;
-        if(y<minY)minY=y;
-        if(x>maxX)maxX=x;
-        if(y>maxY)maxY=y;
-      }
-    }
-  }
-  if(maxX<0)return c;
-
-  // Pequena margem para não cortar a arte.
-  minX=Math.max(0,minX-step);
-  minY=Math.max(0,minY-step);
-  maxX=Math.min(w-1,maxX+step);
-  maxY=Math.min(h-1,maxY+step);
-  const cw=maxX-minX+1,ch=maxY-minY+1;
-
-  // Só recorta quando há uma margem branca significativa.
-  if(cw>=w*.995 && ch>=h*.995)return c;
-
-  const t=document.createElement("canvas");
-  t.width=cw;t.height=ch;
-  const tc=t.getContext("2d",{alpha:false});
-  tc.imageSmoothingEnabled=false;
-  tc.drawImage(c,minX,minY,cw,ch,0,0,cw,ch);
-
-  // Libera o canvas original antes de devolver o recortado.
-  c.width=1;c.height=1;
-  return t;
-}
-
 function atualizarUI(){const total=pdf?pdf.numPages:63;document.getElementById("pageInfo").textContent=paginaAtual+" / "+total;document.getElementById("progress").style.width=(paginaAtual/total*100)+"%"}
 function proximaPagina(){if(pdf&&paginaAtual<pdf.numPages)renderPagina(paginaAtual+1)}function paginaAnterior(){if(pdf&&paginaAtual>1)renderPagina(paginaAtual-1)}
 function voltarBiblioteca(){
@@ -820,15 +742,10 @@ async function renderPaginaVertical(){
         background:"#fff"
       }).promise;
 
-      // Não recortar a página no modo vertical.
-      // Mantemos o canvas inteiro para garantir que nenhum quadro/imagem
-      // seja cortado. A largura é ajustada proporcionalmente à tela.
-      c.style.maxWidth="100%";
-      c.style.width="100%";
-      c.style.height="auto";
+      // Não usa cortarBordas aqui: ele cria outro canvas grande e pode
+      // estourar a memória do celular quando várias páginas são carregadas.
       item.holder.style.aspectRatio="auto";
       item.holder.style.height="auto";
-      item.holder.style.width="100%";
       item.holder.innerHTML="";
       item.holder.appendChild(c);
       rendered.add(item.n);
