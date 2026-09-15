@@ -673,8 +673,7 @@ async function renderPaginaVertical(){
   const area=document.getElementById("pagina");
   if(!area)return;
 
-  // Guarda a posição ANTES de reconstruir a lista de páginas. A versão anterior
-  // chamava update() antes da restauração e acabava salvando scrollY=0.
+  // Salva a referência antes de reconstruir o leitor.
   const estadoSalvo=lerEstado();
   const paginaSalva=Math.max(1,Math.min(Number(estadoSalvo.pagina)||1,pdf.numPages));
   const scrollSalvo=Math.max(0,Number(estadoSalvo.scrollY)||0);
@@ -687,14 +686,20 @@ async function renderPaginaVertical(){
   area.innerHTML='<div class="loading" id="loadingVertical">Preparando leitura vertical...</div>';
   const loading=document.getElementById("loadingVertical");
   const total=pdf.numPages;
+
   const first=await pdf.getPage(1);
   const base=first.getViewport({scale:1});
   const items=[];
+
+  // Cria apenas espaços de tamanho conhecido. Isso evita que o celular
+  // precise carregar as 63 páginas ao mesmo tempo.
   for(let n=1;n<=total;n++){
     const holder=document.createElement("div");
     holder.className="vertical-holder";
     holder.dataset.page=n;
-    holder.style.aspectRatio=`${base.width} / ${base.height}`;
+    holder.style.aspectRatio=`${base.width}/${base.height}`;
+    holder.style.width="100%";
+    holder.style.overflow="hidden";
     const ph=document.createElement("div");
     ph.className="vertical-placeholder";
     ph.style.height="100%";
@@ -703,112 +708,140 @@ async function renderPaginaVertical(){
     area.appendChild(holder);
     items.push({holder,n});
   }
-  if(loading)loading.style.display="none";
-  const oldCanvas=document.getElementById("pageCanvas");if(oldCanvas)oldCanvas.style.display="none";
+  if(loading)loading.remove();
+
   const rendered=new Set();
+  const rendering=new Set();
 
   async function renderOne(item){
-    if(!item||rendered.has(item.n))return;
-    rendered.add(item.n);
+    if(!item || rendered.has(item.n) || rendering.has(item.n)) return;
+    rendering.add(item.n);
     try{
       const page=await pdf.getPage(item.n);
       const base=page.getViewport({scale:1});
-      const cssScale=Math.max((window.innerWidth-16)/base.width,1);
-      const dpr=Math.min(window.devicePixelRatio||1,2);
-      const scale=Math.min(cssScale*dpr,3);
+
+      // Escala mais leve no modo vertical para evitar falta de memória.
+      const cssScale=Math.max((window.innerWidth-16)/base.width,0.75);
+      const dpr=Math.min(window.devicePixelRatio||1,1.5);
+      const scale=Math.min(cssScale*dpr,2);
       const vp=page.getViewport({scale});
       const cssVp=page.getViewport({scale:cssScale});
-      const oldTop=item.holder.getBoundingClientRect().top;
-      const oldHeight=item.holder.getBoundingClientRect().height;
+
       const c=document.createElement("canvas");
       c.className="vertical-page";
-      c.width=Math.floor(vp.width);c.height=Math.floor(vp.height);
-      c.style.width=Math.floor(cssVp.width)+"px";c.style.height="auto";
-      await page.render({canvasContext:c.getContext("2d",{alpha:false}),viewport:vp,background:"#fff"}).promise;
-      cortarBordas(c);
+      c.width=Math.max(1,Math.floor(vp.width));
+      c.height=Math.max(1,Math.floor(vp.height));
+      c.style.width=Math.floor(cssVp.width)+"px";
+      c.style.height="auto";
+      c.style.display="block";
+      c.style.margin="0 auto";
+
+      await page.render({
+        canvasContext:c.getContext("2d",{alpha:false}),
+        viewport:vp,
+        background:"#fff"
+      }).promise;
+
+      // Não usa cortarBordas aqui: ele cria outro canvas grande e pode
+      // estourar a memória do celular quando várias páginas são carregadas.
       item.holder.style.aspectRatio="auto";
-      item.holder.innerHTML="";item.holder.appendChild(c);
-
-      // Se a página renderizada estiver acima do que o usuário está vendo,
-      // compensa a mudança de altura causada pelo corte das bordas. Assim a
-      // leitura não "pula" enquanto novas páginas são carregadas.
-      const newHeight=item.holder.getBoundingClientRect().height;
-      if(oldTop < window.innerHeight && newHeight !== oldHeight){
-        window.scrollBy(0,newHeight-oldHeight);
-      }
+      item.holder.style.height="auto";
+      item.holder.innerHTML="";
+      item.holder.appendChild(c);
+      rendered.add(item.n);
     }catch(e){
-      rendered.delete(item.n);
-      item.holder.innerHTML='<div class="vertical-placeholder" style="height:160px">Erro ao carregar esta página.</div>';
+      console.error("Erro ao renderizar página",item.n,e);
+      // Mantém um espaço estável e permite tentar novamente mais tarde.
+      item.holder.innerHTML='<div class="vertical-placeholder" style="height:160px">Página indisponível no momento.</div>';
+    }finally{
+      rendering.delete(item.n);
     }
   }
 
-  // Restaura por página + posição relativa, e não somente por scrollY.
-  async function restaurarPosicao(){
-    const alvo=items[paginaSalva-1];
-    if(!alvo)return;
-    await renderOne(alvo);
-    for(const n of [paginaSalva-2,paginaSalva-1,paginaSalva+1]){
-      if(n>=1 && n<=total) await renderOne(items[n-1]);
+  // Carrega somente a página visível e algumas próximas.
+  async function renderProximas(n){
+    const indices=[n-1,n,n+1,n+2];
+    for(const i of indices){
+      if(i>=0 && i<items.length) await renderOne(items[i]);
     }
-    const destino=alvo.holder.getBoundingClientRect().top + window.scrollY;
-    const altura=Math.max(1,alvo.holder.getBoundingClientRect().height);
-    const proporcao=Math.min(0.95,Math.max(0,scrollSalvo/(altura||1)));
-    // Se houver um scroll salvo real, prioriza-o; depois da renderização dos
-    // vizinhos ele fica estável graças à compensação acima.
-    const top=Math.max(0,scrollSalvo);
-    window.scrollTo(0,top);
-    // Segunda correção usando a página salva caso o layout tenha mudado.
-    requestAnimationFrame(()=>window.scrollTo(0,Math.max(0,destino + (top-(destino + proporcao*altura)))));
   }
 
-  if("IntersectionObserver" in window){
-    const obs=new IntersectionObserver(entries=>{
-      for(const entry of entries)if(entry.isIntersecting){
-        const item=items.find(x=>x.holder===entry.target);
-        if(!item)continue;
-        renderOne(item);
-        const i=items.indexOf(item);
-        if(items[i-1])renderOne(items[i-1]);
-        if(items[i+1])renderOne(items[i+1]);
-        if(items[i+2])renderOne(items[i+2]);
-      }
-    },{rootMargin:"1000px 0px"});
-    items.forEach(x=>obs.observe(x.holder));
-  }else{
-    for(let i=0;i<Math.min(2,items.length);i++)renderOne(items[i]);
-  }
-
+  let restaurando=true;
   let ultimoSalvamento=0;
   let salvamentoTimer=0;
+
   verticalScrollHandler=()=>{
-    const target=window.innerHeight*.4;
+    const target=window.innerHeight*0.4;
     let current=paginaAtual||1;
     for(const item of items){
       const r=item.holder.getBoundingClientRect();
-      if(r.top<=target && r.bottom>=target){current=item.n;break;}
+      if(r.top<=target && r.bottom>=target){
+        current=item.n;
+        break;
+      }
     }
+
     paginaAtual=current;
-    const info=document.getElementById("pageInfo"),prog=document.getElementById("progress");
+    const info=document.getElementById("pageInfo");
+    const prog=document.getElementById("progress");
     if(info)info.textContent=current+" / "+total;
     if(prog)prog.style.width=(current/total*100)+"%";
-    const pertoDoFim=(window.scrollY+window.innerHeight)>=Math.max(0,document.documentElement.scrollHeight-80);
-    if(current===total || pertoDoFim) marcarLivroComoLido();
+
+    const noFim=(window.scrollY+window.innerHeight)>=document.documentElement.scrollHeight-80;
+    if(current===total || noFim)marcarLivroComoLido();
+
+    // Não salva durante a restauração inicial.
+    if(restaurando)return;
+
     const agora=Date.now();
-    if(agora-ultimoSalvamento>350){
+    if(agora-ultimoSalvamento>250){
       ultimoSalvamento=agora;
       salvarPosicao();
     }else{
       clearTimeout(salvamentoTimer);
-      salvamentoTimer=setTimeout(()=>{ultimoSalvamento=Date.now();salvarPosicao()},380);
+      salvamentoTimer=setTimeout(()=>{
+        ultimoSalvamento=Date.now();
+        salvarPosicao();
+      },300);
     }
+
+    renderProximas(current);
   };
+
   window.addEventListener("scroll",verticalScrollHandler,{passive:true});
 
-  // Atualiza a interface sem sobrescrever a posição salva.
+  if("IntersectionObserver" in window){
+    const obs=new IntersectionObserver(entries=>{
+      for(const entry of entries){
+        if(entry.isIntersecting){
+          const item=items.find(x=>x.holder===entry.target);
+          if(item)renderProximas(item.n);
+        }
+      }
+    },{rootMargin:"500px 0px"});
+    items.forEach(x=>obs.observe(x.holder));
+  }else{
+    renderProximas(paginaSalva);
+  }
+
+  // Como todos os placeholders têm a mesma proporção da página, o scroll
+  // salvo é estável. Primeiro posicionamos no valor salvo e só depois
+  // habilitamos o salvamento.
+  const destino=Math.min(scrollSalvo,Math.max(0,document.documentElement.scrollHeight-window.innerHeight));
+  window.scrollTo(0,destino);
+  paginaAtual=paginaSalva;
   const info=document.getElementById("pageInfo"),prog=document.getElementById("progress");
   if(info)info.textContent=paginaSalva+" / "+total;
   if(prog)prog.style.width=(paginaSalva/total*100)+"%";
-  await restaurarPosicao();
+
+  await renderProximas(paginaSalva);
+
+  // Depois de renderizar a página salva, reposiciona novamente, porque
+  // somente as páginas próximas mudaram de placeholder para canvas.
+  requestAnimationFrame(()=>{
+    window.scrollTo(0,Math.min(scrollSalvo,Math.max(0,document.documentElement.scrollHeight-window.innerHeight)));
+    restaurando=false;
+  });
 }
 
 function escolherIdioma(){
