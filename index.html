@@ -220,7 +220,7 @@ body.light-mode .vertical-exit{background:rgba(255,255,255,.94);color:#111;borde
 <section id="contaArea" class="settings-page hidden">
   <div class="settings-top"><button onclick="mostrarTela('biblioteca')">‹</button><h2>CONTA</h2><span></span></div>
   <div class="account-head"><div class="avatar">📚</div><div><h3>Minha conta</h3><p>Biblioteca Ca SK8</p></div></div>
-  <div class="stats"><div><b id="statLivros">0</b><span>Livros</span></div><div><b id="statFavoritos">0</b><span>Favoritos</span></div><div><b>0</b><span>Lidos</span></div></div>
+  <div class="stats"><div><b id="statLivros">0</b><span>Livros</span></div><div><b id="statFavoritos">0</b><span>Favoritos</span></div><div><b id="statLidos">0</b><span>Lidos</span></div></div>
   <div class="setting-list">
     <button onclick="mostrarTela('preferencias')"><span>⚙</span><div><b>Preferências</b><small>Ajuste as preferências do site</small></div></button>
     <button onclick="mostrarTela('favoritos')"><span>♡</span><div><b>Favoritos</b><small>Seu catálogo pessoal</small></div></button>
@@ -512,11 +512,46 @@ async function excluirCapitulo(id){
 }
 
 function salvarEstado(view,extra={}){
-  const estado={view,pagina:paginaAtual,scrollY:Number(extra.scrollY??(view==="leitor"?window.scrollY:0))||0};
-  localStorage.setItem(STORAGE_KEY,JSON.stringify(estado));sessionStorage.setItem(VIEW_KEY,view);
+  const estado={
+    view,
+    pagina:Math.max(1,Number(extra.pagina??paginaAtual)||1),
+    scrollY:Math.max(0,Number(extra.scrollY??(view==="leitor"?window.scrollY:0))||0)
+  };
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(estado));
+  sessionStorage.setItem(VIEW_KEY,view);
 }
-function lerEstado(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{"view":"biblioteca","pagina":1,"scrollY":0}')}catch(e){return {view:"biblioteca",pagina:1,scrollY:0}}}
-function salvarPosicao(){salvarEstado("leitor",{scrollY:window.scrollY})}
+function lerEstado(){
+  try{
+    const d=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");
+    return {
+      view:d.view||"biblioteca",
+      pagina:Math.max(1,Number(d.pagina)||1),
+      scrollY:Math.max(0,Number(d.scrollY)||0)
+    };
+  }catch(e){return {view:"biblioteca",pagina:1,scrollY:0}}
+}
+function salvarPosicao(){
+  if(document.getElementById("leitor")?.style.display==="none")return;
+  salvarEstado("leitor",{pagina:paginaAtual,scrollY:window.scrollY});
+}
+function marcarLivroComoLido(){
+  if(!livroAtual)return;
+  let ids=[];
+  try{ids=JSON.parse(localStorage.getItem("cask8_lidos")||"[]").map(Number)}catch(e){}
+  const id=Number(livroAtual.id);
+  if(!ids.includes(id)){
+    ids.push(id);
+    localStorage.setItem("cask8_lidos",JSON.stringify(ids));
+  }
+  atualizarContadorLidos();
+}
+function livrosLidosIds(){
+  try{return JSON.parse(localStorage.getItem("cask8_lidos")||"[]").map(Number)}catch(e){return[]}
+}
+function atualizarContadorLidos(){
+  const el=document.getElementById("statLidos");
+  if(el)el.textContent=livrosLidosIds().length;
+}
 async function abrirLivro(id=1){
   const {data,error}=await sb.from("Livros").select("*").eq("id",id).maybeSingle();
   if(error||!data){alert("Não foi possível encontrar este livro.");return}
@@ -530,7 +565,6 @@ async function abrirLivro(id=1){
   livroAtual=data;STORAGE_KEY="orei_sem_rosto_estado_v5_"+data.id;
   pdf=null;carregado=false;renderToken++;
   const estado=lerEstado();paginaAtual=Number(estado.pagina)||1;const posicaoSalva=Math.max(0,Number(estado.scrollY)||0);
-  salvarEstado("leitor",{scrollY:posicaoSalva});
   document.getElementById("biblioteca").style.display="none";document.getElementById("leitor").style.display="block";document.getElementById("controls").style.display="flex";document.getElementById("bottomNav").style.display="none";document.querySelector(".reader-title").textContent=data.title||"Livro";
   const modoInicial=localStorage.getItem("cask8_read_mode")||"paginado";
   window.scrollTo(0,modoInicial==="vertical"?posicaoSalva:0);
@@ -555,7 +589,15 @@ async function renderPagina(n){
   c.width=Math.floor(vp.width);c.height=Math.floor(vp.height);
   c.style.width=Math.floor(cssVp.width)+"px";c.style.height="auto";
   await page.render({canvasContext:ctx,viewport:vp,background:"#fff"}).promise;if(token!==renderToken)return;
-  cortarBordas(c);document.getElementById("loading").style.display="none";c.style.display="block";atualizarUI();salvarPosicao();window.scrollTo({top:0,behavior:"instant"});
+  cortarBordas(c);
+  document.getElementById("loading").style.display="none";
+  c.style.display="block";
+  atualizarUI();
+  window.scrollTo({top:0,behavior:"instant"});
+  requestAnimationFrame(()=>{
+    salvarEstado("leitor",{pagina:paginaAtual,scrollY:0});
+    if(paginaAtual===pdf.numPages) marcarLivroComoLido();
+  });
 }
 function cortarBordas(c){
   const ctx=c.getContext("2d"),w=c.width,h=c.height,data=ctx.getImageData(0,0,w,h).data,step=4;let minX=w,minY=h,maxX=-1,maxY=-1;
@@ -576,7 +618,7 @@ function voltarBiblioteca(){
   carregarBiblioteca();
 }
 function toggleModo(){document.body.classList.toggle("modo")}
-window.addEventListener("load",async()=>{await carregarBiblioteca();const {data}=await sb.auth.getUser();if(data?.user){currentUser=data.user;document.getElementById("adminEmail").textContent=currentUser.email||"";}
+window.addEventListener("load",async()=>{atualizarContadorLidos();await carregarBiblioteca();const {data}=await sb.auth.getUser();if(data?.user){currentUser=data.user;document.getElementById("adminEmail").textContent=currentUser.email||"";}
   document.getElementById("biblioteca").style.display="block";document.getElementById("leitor").style.display="none";document.getElementById("controls").style.display="none";document.getElementById("bottomNav").style.display="flex";
 });
 window.addEventListener("beforeunload",()=>{if(document.getElementById("leitor").style.display!=="none"){salvarPosicao();}});
@@ -592,6 +634,7 @@ function mostrarTela(tela){
   else b?.classList.remove("hidden");
   const st=document.getElementById("statLivros"); if(st) st.textContent=books.length||0;
   const sf=document.getElementById("statFavoritos"); if(sf) sf.textContent=favoritosIds().length;
+  atualizarContadorLidos();
   window.scrollTo(0,0);
 }
 function filtrarLivros(){
@@ -748,6 +791,8 @@ async function renderPaginaVertical(){
     const info=document.getElementById("pageInfo"),prog=document.getElementById("progress");
     if(info)info.textContent=current+" / "+total;
     if(prog)prog.style.width=(current/total*100)+"%";
+    const pertoDoFim=(window.scrollY+window.innerHeight)>=Math.max(0,document.documentElement.scrollHeight-80);
+    if(current===total || pertoDoFim) marcarLivroComoLido();
     const agora=Date.now();
     if(agora-ultimoSalvamento>350){
       ultimoSalvamento=agora;
