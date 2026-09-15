@@ -183,25 +183,32 @@ body.light-mode .vertical-exit{background:rgba(255,255,255,.94);color:#111;borde
 @media(max-width:520px){.vertical-exit{top:76px;left:8px;padding:8px 11px;font-size:11px}}
 </style>
 
-<style id="vertical-fit-fix">
-.vertical-page, .vertical-page canvas {
-  max-width: 100% !important;
-  width: 100% !important;
-  height: auto !important;
-  box-sizing: border-box !important;
-  display: block !important;
+<style id="vertical-full-page-v7">
+.leitura-vertical #pagina{
+  width:100%!important;
+  max-width:100%!important;
+  overflow-x:hidden!important;
 }
-.vertical-page {
-  overflow: hidden !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
-  padding: 0 !important;
+.leitura-vertical .vertical-holder{
+  width:100%!important;
+  max-width:100%!important;
+  height:auto!important;
+  aspect-ratio:auto!important;
+  overflow:visible!important;
+  margin:0 0 14px!important;
+  padding:0!important;
+  background:transparent!important;
 }
-#verticalReader, #verticalPages {
-  width: 100% !important;
-  max-width: 100% !important;
-  overflow-x: hidden !important;
-  box-sizing: border-box !important;
+.leitura-vertical .vertical-holder .vertical-page{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  height:auto!important;
+  margin:0!important;
+  padding:0!important;
+  object-fit:contain!important;
+  box-shadow:none!important;
+  border:0!important;
 }
 </style>
 
@@ -813,12 +820,17 @@ async function renderPaginaVertical(){
         background:"#fff"
       }).promise;
 
-      // Remove as margens brancas do PDF sem manter o canvas original na memória.
-      const cortado=cortarBordasVertical(c);
+      // Não recortar a página no modo vertical.
+      // Mantemos o canvas inteiro para garantir que nenhum quadro/imagem
+      // seja cortado. A largura é ajustada proporcionalmente à tela.
+      c.style.maxWidth="100%";
+      c.style.width="100%";
+      c.style.height="auto";
       item.holder.style.aspectRatio="auto";
       item.holder.style.height="auto";
+      item.holder.style.width="100%";
       item.holder.innerHTML="";
-      item.holder.appendChild(cortado);
+      item.holder.appendChild(c);
       rendered.add(item.n);
     }catch(e){
       console.error("Erro ao renderizar página",item.n,e);
