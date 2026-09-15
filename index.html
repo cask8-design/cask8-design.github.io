@@ -604,6 +604,49 @@ function cortarBordas(c){
   for(let y=0;y<h;y+=step)for(let x=0;x<w;x+=step){const i=(y*w+x)*4,r=data[i],g=data[i+1],b=data[i+2];if(r<242||g<242||b<242){minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y)}}
   if(maxX<0)return;minX=Math.max(0,minX-3);minY=Math.max(0,minY-3);maxX=Math.min(w-1,maxX+3);maxY=Math.min(h-1,maxY+3);const cw=maxX-minX+1,ch=maxY-minY+1;if(cw<w*.98||ch<h*.98){const t=document.createElement("canvas");t.width=cw;t.height=ch;const tc=t.getContext("2d");tc.imageSmoothingEnabled=false;tc.drawImage(c,minX,minY,cw,ch,0,0,cw,ch);c.width=cw;c.height=ch;ctx.drawImage(t,0,0)}
 }
+
+function cortarBordasVertical(c){
+  const ctx=c.getContext("2d",{willReadFrequently:true});
+  const w=c.width,h=c.height;
+  if(!w||!h)return c;
+  // Procura somente a cada 4 pixels para reduzir uso de memória/CPU.
+  const step=4;
+  const data=ctx.getImageData(0,0,w,h).data;
+  let minX=w,minY=h,maxX=-1,maxY=-1;
+  for(let y=0;y<h;y+=step){
+    for(let x=0;x<w;x+=step){
+      const i=(y*w+x)*4;
+      if(data[i]<245 || data[i+1]<245 || data[i+2]<245){
+        if(x<minX)minX=x;
+        if(y<minY)minY=y;
+        if(x>maxX)maxX=x;
+        if(y>maxY)maxY=y;
+      }
+    }
+  }
+  if(maxX<0)return c;
+
+  // Pequena margem para não cortar a arte.
+  minX=Math.max(0,minX-step);
+  minY=Math.max(0,minY-step);
+  maxX=Math.min(w-1,maxX+step);
+  maxY=Math.min(h-1,maxY+step);
+  const cw=maxX-minX+1,ch=maxY-minY+1;
+
+  // Só recorta quando há uma margem branca significativa.
+  if(cw>=w*.995 && ch>=h*.995)return c;
+
+  const t=document.createElement("canvas");
+  t.width=cw;t.height=ch;
+  const tc=t.getContext("2d",{alpha:false});
+  tc.imageSmoothingEnabled=false;
+  tc.drawImage(c,minX,minY,cw,ch,0,0,cw,ch);
+
+  // Libera o canvas original antes de devolver o recortado.
+  c.width=1;c.height=1;
+  return t;
+}
+
 function atualizarUI(){const total=pdf?pdf.numPages:63;document.getElementById("pageInfo").textContent=paginaAtual+" / "+total;document.getElementById("progress").style.width=(paginaAtual/total*100)+"%"}
 function proximaPagina(){if(pdf&&paginaAtual<pdf.numPages)renderPagina(paginaAtual+1)}function paginaAnterior(){if(pdf&&paginaAtual>1)renderPagina(paginaAtual-1)}
 function voltarBiblioteca(){
@@ -742,12 +785,12 @@ async function renderPaginaVertical(){
         background:"#fff"
       }).promise;
 
-      // Não usa cortarBordas aqui: ele cria outro canvas grande e pode
-      // estourar a memória do celular quando várias páginas são carregadas.
+      // Remove as margens brancas do PDF sem manter o canvas original na memória.
+      const cortado=cortarBordasVertical(c);
       item.holder.style.aspectRatio="auto";
       item.holder.style.height="auto";
       item.holder.innerHTML="";
-      item.holder.appendChild(c);
+      item.holder.appendChild(cortado);
       rendered.add(item.n);
     }catch(e){
       console.error("Erro ao renderizar página",item.n,e);
