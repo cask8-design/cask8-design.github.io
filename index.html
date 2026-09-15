@@ -177,7 +177,7 @@ html,body{overflow-x:hidden!important;overscroll-behavior-x:none!important}
 .leitura-vertical .vertical-page{max-width:100%;background:transparent;box-shadow:none;border-radius:0}
 </style>
 </head>
-<body>
+<body autocomplete="off">
 
 <button class="admin-logo-btn" onclick="abrirAdmin()" aria-label="Administrador" title="Administrador">
   <img src="admin-logo-ca-sk8.png" alt="Administrador">
@@ -197,7 +197,16 @@ html,body{overflow-x:hidden!important;overscroll-behavior-x:none!important}
     </div>
   </div>
   <div class="search-box">
-    <span>⌕</span><input id="buscaLivro" oninput="filtrarLivros()" placeholder="Buscar um livro">
+    <span>⌕</span><input id="buscaLivro"
+       type="search"
+       name="book-search"
+       autocomplete="off"
+       autocorrect="off"
+       autocapitalize="none"
+       spellcheck="false"
+       inputmode="search"
+       oninput="filtrarLivros()"
+       placeholder="Buscar um livro">
   </div>
   <div id="booksGrid"></div>
 </section>
