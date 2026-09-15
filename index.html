@@ -176,6 +176,12 @@ html,body{overflow-x:hidden!important;overscroll-behavior-x:none!important}
 .leitura-vertical .vertical-holder{background:transparent!important;margin-bottom:14px}
 .leitura-vertical .vertical-page{max-width:100%;background:transparent;box-shadow:none;border-radius:0}
 </style>
+<style id="vertical-exit-style">
+.vertical-exit{display:none;position:fixed;top:78px;left:10px;z-index:9999;border:0;border-radius:999px;padding:9px 13px;background:rgba(20,22,30,.92);color:#fff;font-weight:700;font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,.35);backdrop-filter:blur(8px)}
+.leitura-vertical .vertical-exit{display:block}
+body.light-mode .vertical-exit{background:rgba(255,255,255,.94);color:#111;border:1px solid #ddd}
+@media(max-width:520px){.vertical-exit{top:76px;left:8px;padding:8px 11px;font-size:11px}}
+</style>
 </head>
 <body autocomplete="off">
 
@@ -245,6 +251,7 @@ html,body{overflow-x:hidden!important;overscroll-behavior-x:none!important}
 </nav>
 
 <section id="leitor">
+  <button id="verticalExit" class="vertical-exit" onclick="voltarBiblioteca()" aria-label="Sair do livro">← Biblioteca</button>
   <div class="reader-top">
     <button class="icon-btn" onclick="voltarBiblioteca()">←</button>
     <div class="reader-title">O Rei Sem Rosto</div>
@@ -504,9 +511,12 @@ async function excluirCapitulo(id){
   if(error){setError("Erro ao excluir: "+error.message);return}mostrarCapitulos();
 }
 
-function salvarEstado(view){localStorage.setItem(STORAGE_KEY,JSON.stringify({view,pagina:paginaAtual}));sessionStorage.setItem(VIEW_KEY,view)}
-function lerEstado(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{"view":"biblioteca","pagina":1}')}catch(e){return {view:"biblioteca",pagina:1}}}
-function salvarPosicao(){salvarEstado("leitor")}
+function salvarEstado(view,extra={}){
+  const estado={view,pagina:paginaAtual,scrollY:Number(extra.scrollY??(view==="leitor"?window.scrollY:0))||0};
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(estado));sessionStorage.setItem(VIEW_KEY,view);
+}
+function lerEstado(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{"view":"biblioteca","pagina":1,"scrollY":0}')}catch(e){return {view:"biblioteca",pagina:1,scrollY:0}}}
+function salvarPosicao(){salvarEstado("leitor",{scrollY:window.scrollY})}
 async function abrirLivro(id=1){
   const {data,error}=await sb.from("Livros").select("*").eq("id",id).maybeSingle();
   if(error||!data){alert("Não foi possível encontrar este livro.");return}
@@ -519,10 +529,12 @@ async function abrirLivro(id=1){
   }
   livroAtual=data;STORAGE_KEY="orei_sem_rosto_estado_v5_"+data.id;
   pdf=null;carregado=false;renderToken++;
-  const estado=lerEstado();paginaAtual=Number(estado.pagina)||1;salvarEstado("leitor");
-  document.getElementById("biblioteca").style.display="none";document.getElementById("leitor").style.display="block";document.getElementById("controls").style.display="flex";document.getElementById("bottomNav").style.display="none";document.querySelector(".reader-title").textContent=data.title||"Livro";window.scrollTo(0,0);
-  document.getElementById("loading").style.display="flex";document.getElementById("pageCanvas").style.display="none";document.getElementById("erro").style.display="none";
+  const estado=lerEstado();paginaAtual=Number(estado.pagina)||1;const posicaoSalva=Math.max(0,Number(estado.scrollY)||0);
+  salvarEstado("leitor",{scrollY:posicaoSalva});
+  document.getElementById("biblioteca").style.display="none";document.getElementById("leitor").style.display="block";document.getElementById("controls").style.display="flex";document.getElementById("bottomNav").style.display="none";document.querySelector(".reader-title").textContent=data.title||"Livro";
   const modoInicial=localStorage.getItem("cask8_read_mode")||"paginado";
+  window.scrollTo(0,modoInicial==="vertical"?posicaoSalva:0);
+  document.getElementById("loading").style.display="flex";document.getElementById("pageCanvas").style.display="none";document.getElementById("erro").style.display="none";
   pdfjsLib.getDocument(PDF_URL).promise.then(p=>{pdf=p;carregado=true;paginaAtual=Math.min(paginaAtual,p.numPages);
     document.body.classList.toggle("leitura-vertical",modoInicial==="vertical");
     const lv=document.getElementById("leituraValor");if(lv)lv.textContent=modoInicial==="vertical"?"Vertical":"Paginado";
@@ -552,12 +564,23 @@ function cortarBordas(c){
 }
 function atualizarUI(){const total=pdf?pdf.numPages:63;document.getElementById("pageInfo").textContent=paginaAtual+" / "+total;document.getElementById("progress").style.width=(paginaAtual/total*100)+"%"}
 function proximaPagina(){if(pdf&&paginaAtual<pdf.numPages)renderPagina(paginaAtual+1)}function paginaAnterior(){if(pdf&&paginaAtual>1)renderPagina(paginaAtual-1)}
-function voltarBiblioteca(){salvarEstado("biblioteca");renderToken++;document.getElementById("leitor").style.display="none";document.getElementById("biblioteca").style.display="block";document.getElementById("controls").style.display="none";document.getElementById("bottomNav").style.display="flex";document.getElementById("progress").style.width="0";carregarBiblioteca()}
+function voltarBiblioteca(){
+  salvarPosicao();
+  renderToken++;
+  document.getElementById("leitor").style.display="none";
+  document.getElementById("biblioteca").style.display="block";
+  document.getElementById("controls").style.display="none";
+  document.getElementById("bottomNav").style.display="flex";
+  document.getElementById("progress").style.width="0";
+  window.scrollTo(0,0);
+  carregarBiblioteca();
+}
 function toggleModo(){document.body.classList.toggle("modo")}
 window.addEventListener("load",async()=>{await carregarBiblioteca();const {data}=await sb.auth.getUser();if(data?.user){currentUser=data.user;document.getElementById("adminEmail").textContent=currentUser.email||"";}
   document.getElementById("biblioteca").style.display="block";document.getElementById("leitor").style.display="none";document.getElementById("controls").style.display="none";document.getElementById("bottomNav").style.display="flex";
 });
-window.addEventListener("beforeunload",()=>{if(document.getElementById("leitor").style.display!=="none"){localStorage.setItem(STORAGE_KEY,JSON.stringify({view:"biblioteca",pagina:paginaAtual}));}});
+window.addEventListener("beforeunload",()=>{if(document.getElementById("leitor").style.display!=="none"){salvarPosicao();}});
+window.addEventListener("pagehide",()=>{if(document.getElementById("leitor").style.display!=="none"){salvarPosicao();}});
 </script>
 <script id="app-config-js">
 function mostrarTela(tela){
@@ -668,6 +691,8 @@ async function renderPaginaVertical(){
   }else{
     for(let i=0;i<Math.min(2,items.length);i++)renderOne(items[i]);
   }
+  let ultimoSalvamento=0;
+  let salvamentoTimer=0;
   const update=()=>{
     const target=window.innerHeight*.4;
     let current=1;
@@ -679,9 +704,16 @@ async function renderPaginaVertical(){
     const info=document.getElementById("pageInfo"),prog=document.getElementById("progress");
     if(info)info.textContent=current+" / "+total;
     if(prog)prog.style.width=(current/total*100)+"%";
+    const agora=Date.now();
+    if(agora-ultimoSalvamento>350){ultimoSalvamento=agora;salvarPosicao();}
+    else{clearTimeout(salvamentoTimer);salvamentoTimer=setTimeout(()=>{ultimoSalvamento=Date.now();salvarPosicao()},380);}
   };
   window.addEventListener("scroll",update,{passive:true});
   update();
+  const posicaoSalva=Math.max(0,Number(lerEstado().scrollY)||0);
+  requestAnimationFrame(()=>window.scrollTo(0,posicaoSalva));
+  setTimeout(()=>window.scrollTo(0,posicaoSalva),250);
+  setTimeout(()=>window.scrollTo(0,posicaoSalva),1000);
 }
 function escolherIdioma(){
   const novo=(localStorage.getItem("cask8_lang")||"pt")==="pt"?"en":"pt";
