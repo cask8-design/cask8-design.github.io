@@ -154,6 +154,13 @@ body.light-mode:before{
 body.light-mode .vertical-placeholder{background:#ddd;color:#555}
 </style>
 
+
+<style id="reader-stability-fix">
+html,body{overflow-x:hidden!important;overscroll-behavior-x:none!important}
+#leitor,#pagina{width:100%;max-width:100%;overflow-x:hidden!important}
+#pageCanvas{touch-action:pan-y pinch-zoom!important;max-width:100%!important}
+</style>
+
 </head>
 <body>
 
@@ -195,7 +202,7 @@ body.light-mode .vertical-placeholder{background:#ddd;color:#555}
   <div class="settings-top"><button onclick="mostrarTela('conta')">‹</button><h2>PREFERÊNCIAS</h2><span></span></div>
   <div class="setting-list">
     <button onclick="toggleDarkMode()"><span>☾</span><div><b id="prefTemaTitulo">Tema do app</b><small id="temaValor">Dark Mode</small></div></button>
-    <button onclick="toggleLeituraVertical()"><span>▤</span><div><b id="prefLeituraTitulo">Modo de leitura</b><small id="leituraValor">Vertical</small></div></button>
+    <button onclick="toggleLeituraVertical()"><span>▤</span><div><b id="prefLeituraTitulo">Modo de leitura</b><small id="leituraValor">Paginado</small></div></button>
     <button onclick="escolherIdioma()"><span>文A</span><div><b id="prefIdiomaTitulo">Linguagem</b><small id="idiomaValor">Português (Brasil)</small></div></button>
   </div>
 </section>
@@ -483,7 +490,7 @@ async function abrirLivro(id=1){
   const estado=lerEstado();paginaAtual=Number(estado.pagina)||1;salvarEstado("leitor");
   document.getElementById("biblioteca").style.display="none";document.getElementById("leitor").style.display="block";document.getElementById("controls").style.display="flex";document.getElementById("bottomNav").style.display="none";document.querySelector(".reader-title").textContent=data.title||"Livro";window.scrollTo(0,0);
   document.getElementById("loading").style.display="flex";document.getElementById("pageCanvas").style.display="none";document.getElementById("erro").style.display="none";
-  pdfjsLib.getDocument(PDF_URL).promise.then(p=>{pdf=p;carregado=true;paginaAtual=Math.min(paginaAtual,p.numPages);if((localStorage.getItem("cask8_read_mode")||"vertical")==="vertical") renderPaginaVertical(); else renderPagina(paginaAtual)}).catch(()=>{document.getElementById("loading").style.display="none";document.getElementById("erro").style.display="block";document.getElementById("erro").textContent="Não foi possível carregar o PDF deste livro."});
+  pdfjsLib.getDocument(PDF_URL).promise.then(p=>{pdf=p;carregado=true;paginaAtual=Math.min(paginaAtual,p.numPages);localStorage.setItem("cask8_read_mode","paginado");document.body.classList.remove("leitura-vertical");const lv=document.getElementById("leituraValor");if(lv)lv.textContent="Paginado";renderPagina(paginaAtual)}).catch(()=>{document.getElementById("loading").style.display="none";document.getElementById("erro").style.display="block";document.getElementById("erro").textContent="Não foi possível carregar o PDF deste livro."});
 }
 
 async function renderPagina(n){
@@ -539,17 +546,22 @@ function toggleDarkMode(){
   aplicarTema();
 }
 function toggleLeituraVertical(){
-  const atual=localStorage.getItem("cask8_read_mode")||"vertical";
+  const atual=localStorage.getItem("cask8_read_mode")||"paginado";
   const novo=atual==="vertical"?"paginado":"vertical";
   localStorage.setItem("cask8_read_mode",novo);
   const el=document.getElementById("leituraValor"); if(el)el.textContent=novo==="vertical"?"Vertical":"Paginado";
   if(document.getElementById("leitor")?.style.display!=="none") aplicarModoLeitura();
 }
 function aplicarModoLeitura(){
-  const vertical=(localStorage.getItem("cask8_read_mode")||"vertical")==="vertical";
+  const vertical=localStorage.getItem("cask8_read_mode")==="vertical";
   document.body.classList.toggle("leitura-vertical",vertical);
-  if(!vertical && pdf && typeof renderPagina==="function") renderPagina(paginaAtual);
-  if(vertical && pdf && typeof renderPaginaVertical==="function"){document.getElementById("pageCanvas").style.display="none";renderPaginaVertical();}
+  if(!vertical){
+    const area=document.getElementById("pagina");
+    if(area) area.innerHTML='<div class="loading" id="loading">Carregando página...</div><canvas id="pageCanvas"></canvas>';
+    if(pdf && typeof renderPagina==="function") renderPagina(paginaAtual);
+  }else if(pdf && typeof renderPaginaVertical==="function"){
+    renderPaginaVertical();
+  }
 }
 async function renderPaginaVertical(){
   if(!pdf)return;
@@ -689,9 +701,19 @@ function aplicarIdioma(){
   Object.entries(pairs).forEach(([sel,text])=>{const el=document.querySelector(sel);if(el)el.textContent=text});
   const ph=document.getElementById("buscaLivro");if(ph)ph.placeholder=en?"Search a book":"Buscar um livro";
   const t=document.getElementById("temaValor");if(t)t.textContent=document.body.classList.contains("light-mode")?"Light Mode":"Dark Mode";
-  const m=document.getElementById("leituraValor");if(m)m.textContent=(localStorage.getItem("cask8_read_mode")||"vertical")==="vertical"?"Vertical":"Paginado";
+  const m=document.getElementById("leituraValor");if(m)m.textContent=(localStorage.getItem("cask8_read_mode")||"paginado")==="vertical"?"Vertical":"Paginado";
 }
 (function(){aplicarTema();aplicarIdioma();const m=localStorage.getItem("cask8_read_mode")||"paginado";const el=document.getElementById("leituraValor");if(el)el.textContent=m==="vertical"?"Vertical":"Paginado";})();
+</script>
+
+
+<script id="reader-reset">
+(function(){
+  if(!sessionStorage.getItem("cask8_stable_reader_v1")){
+    localStorage.setItem("cask8_read_mode","paginado");
+    sessionStorage.setItem("cask8_stable_reader_v1","1");
+  }
+})();
 </script>
 
 </body>
