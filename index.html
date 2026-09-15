@@ -170,6 +170,12 @@ html,body{overflow-x:hidden!important;overscroll-behavior-x:none!important}
 .favorites-empty{text-align:center;color:#999;padding:50px 15px}
 </style>
 
+
+<style id="vertical-clean-reader">
+.leitura-vertical .controls{display:none!important}
+.leitura-vertical .vertical-holder{background:transparent!important;margin-bottom:14px}
+.leitura-vertical .vertical-page{max-width:100%;background:transparent;box-shadow:none;border-radius:0}
+</style>
 </head>
 <body>
 
@@ -627,6 +633,7 @@ async function renderPaginaVertical(){
       c.width=Math.floor(vp.width);c.height=Math.floor(vp.height);
       c.style.width=Math.floor(cssVp.width)+"px";c.style.height="auto";
       await page.render({canvasContext:c.getContext("2d",{alpha:false}),viewport:vp,background:"#fff"}).promise;
+      cortarBordas(c);
       item.holder.style.aspectRatio="auto";
       item.holder.innerHTML="";item.holder.appendChild(c);
     }catch(e){
