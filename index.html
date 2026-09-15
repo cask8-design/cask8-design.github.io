@@ -23,10 +23,10 @@ main{max-width:1100px;margin:auto;padding:14px}
 .reader-title{font-weight:700;text-align:center;flex:1;font-size:14px}.icon-btn{width:44px;height:42px;padding:0;font-size:19px}
 #pagina{width:100%;display:flex;justify-content:center;align-items:flex-start;padding:8px 0 92px;min-height:65vh}
 #pageCanvas{display:block;max-width:100%;height:auto;border-radius:4px;box-shadow:0 10px 40px #0009;background:#fff}
-.controls{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:8px;padding:8px;background:#15151bd9;border:1px solid #34343d;border-radius:18px;backdrop-filter:blur(14px);box-shadow:0 10px 35px #000b;max-width:calc(100vw - 20px)}
+.controls{position:fixed;left:50%;bottom:calc(64px + env(safe-area-inset-bottom) + 12px);transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:8px;padding:8px;background:#15151bd9;border:1px solid #34343d;border-radius:18px;backdrop-filter:blur(14px);box-shadow:0 10px 35px #000b;max-width:calc(100vw - 20px)}
 .controls button{min-width:46px;height:44px;padding:0}.side-nav{position:fixed;top:50%;transform:translateY(-50%);z-index:25;width:50px;height:68px;border:1px solid #34343d;border-radius:18px;background:#15151bd9;color:#fff;font-size:40px;display:none}
 .side-prev{left:8px}.side-next{right:8px}.modo .side-nav{display:flex;align-items:center;justify-content:center}.modo .header{display:none}.modo main{padding:0}.modo .reader-top{top:0}
-#pageInfo{min-width:78px;text-align:center;font-size:12px;color:#ddd}.progress{position:fixed;left:0;bottom:0;height:3px;background:#fff;z-index:40;width:0}
+#pageInfo{min-width:78px;text-align:center;font-size:12px;color:#ddd}.progress{position:fixed;left:0;bottom:calc(64px + env(safe-area-inset-bottom));height:3px;background:#fff;z-index:40;width:0}
 .loading{min-height:55vh;display:flex;align-items:center;justify-content:center;color:#aaa;text-align:center;padding:25px}#erro{display:none;color:#ffb4b4;text-align:center;padding:25px}
 .admin{max-width:540px;margin:28px auto;padding:14px}.admin-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.admin h3{margin:0 0 3px;font-size:17px}.muted{color:#8c8c96;font-size:11px}
 .tabs{display:flex;gap:7px;margin:12px 0}.tabs button{flex:1;padding:10px 8px}
@@ -90,8 +90,30 @@ main{max-width:1100px;margin:auto;padding:14px}
 .setting-list{display:flex;flex-direction:column;gap:3px}.setting-list button{width:100%;background:transparent;color:#fff;text-align:left;border-radius:12px;padding:14px 8px;display:flex;align-items:center;gap:16px}
 .setting-list button:hover{background:rgba(255,255,255,.04)}
 .setting-list button>span{width:34px;text-align:center;font-size:25px}.setting-list b{display:block;font-size:15px}.setting-list small{display:block;color:#999;margin-top:4px;font-size:12px}
-body.light-mode{background:#f0f1f4!important;color:#111}body.light-mode .header{background:#fff;color:#111}body.light-mode .search-box{background:#fff;color:#111}body.light-mode .search-box input{color:#111}body.light-mode .bottom-nav{background:#fff;color:#111}body.light-mode .bottom-nav button{color:#222}body.light-mode .settings-top button{color:#111}body.light-mode .setting-list button{color:#111}body.light-mode .stats div{background:#fff;border:1px solid #ddd}
+html.light-mode,body.light-mode{background:#f0f1f4!important;color:#111;background-image:none!important}body.light-mode .header{border-color:#d6d8df}body.light-mode .card,body.light-mode .admin{background:#fff;color:#111;border-color:#ddd}body.light-mode .fuzzar-footer{color:#777}body.light-mode .header{background:#fff;color:#111}body.light-mode .search-box{background:#fff;color:#111}body.light-mode .search-box input{color:#111}body.light-mode .bottom-nav{background:#fff;color:#111;border-color:#ddd}body.light-mode .bottom-nav button{color:#222}body.light-mode .settings-top button{color:#111}body.light-mode .setting-list button{color:#111}body.light-mode .stats div{background:#fff;border:1px solid #ddd}
 @media(max-width:700px){main{padding:10px 10px 78px}.app-header img{height:95px}.welcome{padding:4px}.welcome h1{font-size:21px}.books-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card{width:auto;margin:0;padding:8px;border-radius:14px}.card h2{font-size:15px}.card p{font-size:11px}.card button{font-size:11px;padding:9px 10px}.bottom-nav button{padding:4px 18px}}
+</style>
+
+
+<style id="leitura-config-style">
+#pagina .vertical-page{display:block;max-width:100%;height:auto;margin:0 auto 10px;border-radius:3px;box-shadow:0 8px 28px #0008;background:#fff}
+.leitura-vertical #pageCanvas{display:none!important}.leitura-vertical #pagina{display:block;padding-bottom:110px}
+body.light-mode #pagina .vertical-page{box-shadow:0 4px 15px #9995}
+</style>
+
+<style id="reader-bottom-fix">
+@media(max-width:700px){
+  .controls{
+    bottom:calc(64px + env(safe-area-inset-bottom) + 10px)!important;
+    max-width:calc(100vw - 20px);
+  }
+  #leitor{
+    padding-bottom:150px!important;
+  }
+  #pagina{
+    padding-bottom:20px;
+  }
+}
 </style>
 
 </head>
@@ -134,9 +156,9 @@ body.light-mode{background:#f0f1f4!important;color:#111}body.light-mode .header{
 <section id="preferenciasArea" class="settings-page hidden">
   <div class="settings-top"><button onclick="mostrarTela('conta')">‹</button><h2>PREFERÊNCIAS</h2><span></span></div>
   <div class="setting-list">
-    <button onclick="toggleDarkMode()"><span>☾</span><div><b>Tema do app</b><small id="temaValor">Dark Mode</small></div></button>
-    <button onclick="toggleLeituraVertical()"><span>▤</span><div><b>Modo de leitura</b><small id="leituraValor">Vertical</small></div></button>
-    <button onclick="escolherIdioma()"><span>文A</span><div><b>Linguagem</b><small id="idiomaValor">Português (Brasil)</small></div></button>
+    <button onclick="toggleDarkMode()"><span>☾</span><div><b id="prefTemaTitulo">Tema do app</b><small id="temaValor">Dark Mode</small></div></button>
+    <button onclick="toggleLeituraVertical()"><span>▤</span><div><b id="prefLeituraTitulo">Modo de leitura</b><small id="leituraValor">Vertical</small></div></button>
+    <button onclick="escolherIdioma()"><span>文A</span><div><b id="prefIdiomaTitulo">Linguagem</b><small id="idiomaValor">Português (Brasil)</small></div></button>
   </div>
 </section>
 
@@ -421,9 +443,9 @@ async function abrirLivro(id=1){
   livroAtual=data;STORAGE_KEY="orei_sem_rosto_estado_v5_"+data.id;
   pdf=null;carregado=false;renderToken++;
   const estado=lerEstado();paginaAtual=Number(estado.pagina)||1;salvarEstado("leitor");
-  document.getElementById("biblioteca").style.display="none";document.getElementById("leitor").style.display="block";document.getElementById("controls").style.display="flex";document.querySelector(".reader-title").textContent=data.title||"Livro";window.scrollTo(0,0);
+  document.getElementById("biblioteca").style.display="none";document.getElementById("leitor").style.display="block";document.getElementById("controls").style.display="flex";document.getElementById("bottomNav").style.display="none";document.querySelector(".reader-title").textContent=data.title||"Livro";window.scrollTo(0,0);
   document.getElementById("loading").style.display="flex";document.getElementById("pageCanvas").style.display="none";document.getElementById("erro").style.display="none";
-  pdfjsLib.getDocument(PDF_URL).promise.then(p=>{pdf=p;carregado=true;paginaAtual=Math.min(paginaAtual,p.numPages);renderPagina(paginaAtual)}).catch(()=>{document.getElementById("loading").style.display="none";document.getElementById("erro").style.display="block";document.getElementById("erro").textContent="Não foi possível carregar o PDF deste livro."});
+  pdfjsLib.getDocument(PDF_URL).promise.then(p=>{pdf=p;carregado=true;paginaAtual=Math.min(paginaAtual,p.numPages);if((localStorage.getItem("cask8_read_mode")||"vertical")==="vertical") renderPaginaVertical(); else renderPagina(paginaAtual)}).catch(()=>{document.getElementById("loading").style.display="none";document.getElementById("erro").style.display="block";document.getElementById("erro").textContent="Não foi possível carregar o PDF deste livro."});
 }
 
 async function renderPagina(n){
@@ -448,10 +470,10 @@ function cortarBordas(c){
 }
 function atualizarUI(){const total=pdf?pdf.numPages:63;document.getElementById("pageInfo").textContent=paginaAtual+" / "+total;document.getElementById("progress").style.width=(paginaAtual/total*100)+"%"}
 function proximaPagina(){if(pdf&&paginaAtual<pdf.numPages)renderPagina(paginaAtual+1)}function paginaAnterior(){if(pdf&&paginaAtual>1)renderPagina(paginaAtual-1)}
-function voltarBiblioteca(){salvarEstado("biblioteca");renderToken++;document.getElementById("leitor").style.display="none";document.getElementById("biblioteca").style.display="block";document.getElementById("controls").style.display="none";document.getElementById("progress").style.width="0";carregarBiblioteca()}
+function voltarBiblioteca(){salvarEstado("biblioteca");renderToken++;document.getElementById("leitor").style.display="none";document.getElementById("biblioteca").style.display="block";document.getElementById("controls").style.display="none";document.getElementById("bottomNav").style.display="flex";document.getElementById("progress").style.width="0";carregarBiblioteca()}
 function toggleModo(){document.body.classList.toggle("modo")}
 window.addEventListener("load",async()=>{await carregarBiblioteca();const {data}=await sb.auth.getUser();if(data?.user){currentUser=data.user;document.getElementById("adminEmail").textContent=currentUser.email||"";}
-  document.getElementById("biblioteca").style.display="block";document.getElementById("leitor").style.display="none";document.getElementById("controls").style.display="none";
+  document.getElementById("biblioteca").style.display="block";document.getElementById("leitor").style.display="none";document.getElementById("controls").style.display="none";document.getElementById("bottomNav").style.display="flex";
 });
 window.addEventListener("beforeunload",()=>{if(document.getElementById("leitor").style.display!=="none"){localStorage.setItem(STORAGE_KEY,JSON.stringify({view:"biblioteca",pagina:paginaAtual}));}});
 </script>
@@ -462,43 +484,89 @@ function mostrarTela(tela){
   if(tela==="conta") c?.classList.remove("hidden");
   else if(tela==="preferencias") p?.classList.remove("hidden");
   else b?.classList.remove("hidden");
-  document.getElementById("statLivros") && (document.getElementById("statLivros").textContent=books.length||0);
+  const st=document.getElementById("statLivros"); if(st) st.textContent=books.length||0;
   window.scrollTo(0,0);
 }
 function filtrarLivros(){
   const termo=(document.getElementById("buscaLivro")?.value||"").toLowerCase().trim();
-  document.querySelectorAll("#booksGrid .card").forEach(card=>{
-    card.style.display=card.innerText.toLowerCase().includes(termo)?"":"none";
-  });
+  document.querySelectorAll("#booksGrid .card").forEach(card=>card.style.display=card.innerText.toLowerCase().includes(termo)?"":"none");
+}
+function aplicarTema(){
+  const light=localStorage.getItem("cask8_theme")==="light";
+  document.body.classList.toggle("light-mode",light); document.documentElement.classList.toggle("light-mode",light);
+  const t=document.getElementById("temaValor"); if(t)t.textContent=light?"Light Mode":"Dark Mode";
 }
 function toggleDarkMode(){
-  document.body.classList.toggle("light-mode");
-  const light=document.body.classList.contains("light-mode");
-  localStorage.setItem("cask8_theme",light?"light":"dark");
-  document.getElementById("temaValor").textContent=light?"Light Mode":"Dark Mode";
+  localStorage.setItem("cask8_theme",localStorage.getItem("cask8_theme")==="light"?"dark":"light");
+  aplicarTema();
 }
 function toggleLeituraVertical(){
   const atual=localStorage.getItem("cask8_read_mode")||"vertical";
   const novo=atual==="vertical"?"paginado":"vertical";
   localStorage.setItem("cask8_read_mode",novo);
-  document.getElementById("leituraValor").textContent=novo==="vertical"?"Vertical":"Paginado";
+  const el=document.getElementById("leituraValor"); if(el)el.textContent=novo==="vertical"?"Vertical":"Paginado";
+  if(document.getElementById("leitor")?.style.display!=="none") aplicarModoLeitura();
+}
+function aplicarModoLeitura(){
+  const vertical=(localStorage.getItem("cask8_read_mode")||"vertical")==="vertical";
+  document.body.classList.toggle("leitura-vertical",vertical);
+  if(!vertical && pdf && typeof renderPagina==="function") renderPagina(paginaAtual);
+  if(vertical && pdf && typeof renderPaginaVertical==="function") renderPaginaVertical();
+}
+async function renderPaginaVertical(){
+  if(!pdf)return;
+  const area=document.getElementById("pagina"); if(!area)return;
+  area.innerHTML="";
+  const total=pdf.numPages;
+  for(let n=1;n<=total;n++){
+    const page=await pdf.getPage(n);
+    const base=page.getViewport({scale:1});
+    const cssScale=Math.max((window.innerWidth-12)/base.width,1);
+    const dpr=Math.min(window.devicePixelRatio||1,3);
+    const vp=page.getViewport({scale:Math.min(cssScale*dpr,4)});
+    const cssVp=page.getViewport({scale:cssScale});
+    const c=document.createElement("canvas"); c.className="vertical-page";
+    c.width=Math.floor(vp.width); c.height=Math.floor(vp.height);
+    c.style.width=Math.floor(cssVp.width)+"px"; c.style.height="auto";
+    c.getContext("2d",{alpha:false});
+    await page.render({canvasContext:c.getContext("2d",{alpha:false}),viewport:vp,background:"#fff"}).promise;
+    area.appendChild(c);
+  }
+  document.getElementById("loading").style.display="none";
+  document.getElementById("pageCanvas").style.display="none";
+  document.getElementById("pageInfo").textContent="1 / "+total;
+  document.getElementById("progress").style.width="100%";
 }
 function escolherIdioma(){
-  const atual=localStorage.getItem("cask8_lang")||"pt";
-  const novo=atual==="pt"?"en":"pt";
-  localStorage.setItem("cask8_lang",novo);
-  document.getElementById("idiomaValor").textContent=novo==="pt"?"Português (Brasil)":"English";
+  const novo=(localStorage.getItem("cask8_lang")||"pt")==="pt"?"en":"pt";
+  localStorage.setItem("cask8_lang",novo); aplicarIdioma();
 }
-(function(){
-  const light=localStorage.getItem("cask8_theme")==="light";
-  if(light)document.body.classList.add("light-mode");
-  setTimeout(()=>{
-    const t=document.getElementById("temaValor"),m=document.getElementById("leituraValor"),i=document.getElementById("idiomaValor");
-    if(t)t.textContent=light?"Light Mode":"Dark Mode";
-    if(m)m.textContent=(localStorage.getItem("cask8_read_mode")||"vertical")==="vertical"?"Vertical":"Paginado";
-    if(i)i.textContent=(localStorage.getItem("cask8_lang")||"pt")==="pt"?"Português (Brasil)":"English";
-  },0);
-})();
+function aplicarIdioma(){
+  const en=localStorage.getItem("cask8_lang")==="en";
+  const i=document.getElementById("idiomaValor"); if(i)i.textContent=en?"English":"Português (Brasil)";
+  const pairs=en?{
+    ".header-title":"My Library",".welcome h1":"My Library",".welcome p":"Your stories, your worlds.",
+    "#contaArea h2":"ACCOUNT","#preferenciasArea h2":"PREFERENCES",
+    ".bottom-nav button:nth-child(1) small":"Home",".bottom-nav button:nth-child(2) small":"Search",".bottom-nav button:nth-child(3) small":"Account",
+    "#prefTemaTitulo":"App theme","#prefLeituraTitulo":"Reading mode","#prefIdiomaTitulo":"Language",
+    ".setting-list button:nth-child(1) b":"Preferences",".setting-list button:nth-child(1) small":"Adjust site preferences",
+    ".setting-list button:nth-child(2) b":"Favorites",".setting-list button:nth-child(2) small":"Your personal catalog",
+    ".setting-list button:nth-child(3) b":"Notifications",".setting-list button:nth-child(3) small":"Your notifications"
+  }:{
+    ".header-title":"Minha Biblioteca",".welcome h1":"Minha Biblioteca",".welcome p":"Suas histórias, seus mundos.",
+    "#contaArea h2":"CONTA","#preferenciasArea h2":"PREFERÊNCIAS",
+    ".bottom-nav button:nth-child(1) small":"Início",".bottom-nav button:nth-child(2) small":"Buscar",".bottom-nav button:nth-child(3) small":"Conta",
+    "#prefTemaTitulo":"Tema do app","#prefLeituraTitulo":"Modo de leitura","#prefIdiomaTitulo":"Linguagem",
+    ".setting-list button:nth-child(1) b":"Preferências",".setting-list button:nth-child(1) small":"Ajuste as preferências do site",
+    ".setting-list button:nth-child(2) b":"Favoritos",".setting-list button:nth-child(2) small":"Seu catálogo pessoal",
+    ".setting-list button:nth-child(3) b":"Notificações",".setting-list button:nth-child(3) small":"Suas notificações"
+  };
+  Object.entries(pairs).forEach(([sel,text])=>{const el=document.querySelector(sel);if(el)el.textContent=text});
+  const ph=document.getElementById("buscaLivro");if(ph)ph.placeholder=en?"Search a book":"Buscar um livro";
+  const t=document.getElementById("temaValor");if(t)t.textContent=document.body.classList.contains("light-mode")?"Light Mode":"Dark Mode";
+  const m=document.getElementById("leituraValor");if(m)m.textContent=(localStorage.getItem("cask8_read_mode")||"vertical")==="vertical"?"Vertical":"Paginado";
+}
+(function(){aplicarTema();aplicarIdioma();const m=localStorage.getItem("cask8_read_mode")||"vertical";const el=document.getElementById("leituraValor");if(el)el.textContent=m==="vertical"?"Vertical":"Paginado";})();
 </script>
 
 </body>
