@@ -263,7 +263,7 @@ html,body{overflow-x:hidden!important;overscroll-behavior-x:none!important}
 <section id="newPasswordArea" class="admin hidden">
   <h3>🔑 Criar nova senha</h3>
   <div class="muted" style="margin:6px 0 12px">Digite uma nova senha para sua conta de administrador.</div>
-  <div class="form"><input id="newPassword" type="password" placeholder="Nova senha"><input id="newPassword2" type="password" placeholder="Repita a nova senha"><button style="width:100%" onclick="salvarNovaSenha()">💾 Salvar nova senha</button></div>
+  <div class="form"><input id="newPassword" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Nova senha"><input id="newPassword2" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Repita a nova senha"><button style="width:100%" onclick="salvarNovaSenha()">💾 Salvar nova senha</button></div>
 </section>
 
 <section id="adminArea" class="admin hidden">
@@ -344,6 +344,8 @@ sb.auth.onAuthStateChange((event,session)=>{
     document.getElementById("leitor")?.classList.add("hidden");
     document.getElementById("loginRecovery")?.classList.add("hidden");
     document.getElementById("newPasswordArea")?.classList.remove("hidden");
+    const np=document.getElementById("newPassword"),np2=document.getElementById("newPassword2");
+    if(np) np.type="password"; if(np2) np2.type="password";
     document.getElementById("adminArea")?.classList.add("hidden");
   }
 });
